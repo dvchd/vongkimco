@@ -20,7 +20,7 @@ RUN cargo build --release --bin vongkimco-backend
 FROM debian:bookworm-slim AS runtime
 ENV TZ=Asia/Ho_Chi_Minh
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl libsqlite3-0 su-exec \
+    ca-certificates curl libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -ms /bin/bash app
