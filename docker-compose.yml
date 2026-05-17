@@ -1,7 +1,7 @@
 # Vòng Kim Cô — production stack
 # Deploy to Coolify: select "Docker Compose" with this file as source.
 # Coolify will provision a Caddy/Traefik reverse proxy that terminates TLS
-# for https://vongkimco.hoctuthtien.com and forwards to the backend on :8080.
+# for https://vongkimco.hoctuthien.com and forwards to the backend on :8080.
 
 services:
     backend:
@@ -13,7 +13,7 @@ services:
         restart: unless-stopped
         environment:
             # Public URL the backend uses to build OAuth redirect + device-activate links.
-            PUBLIC_URL: ${PUBLIC_URL:-https://vongkimco.hoctuthtien.com}
+            PUBLIC_URL: ${PUBLIC_URL:-https://vongkimco.hoctuthien.com}
             PORT: "8080"
             DATABASE_URL: "sqlite:///data/vongkimco.db?mode=rwc"
             SCREENSHOT_DIR: "/data/screenshots"

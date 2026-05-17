@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_SERVER: &str = "https://vongkimco.hoctuthtien.com";
+const DEFAULT_SERVER: &str = "https://vongkimco.hoctuthien.com";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Settings {

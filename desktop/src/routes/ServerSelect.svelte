@@ -5,7 +5,7 @@
 
     const dispatch = createEventDispatcher();
 
-    let url = $settings?.server_url ?? "https://vongkimco.hoctuthtien.com";
+    let url = $settings?.server_url ?? "https://vongkimco.hoctuthien.com";
     let testing = false;
     let info: any = null;
     let error: string | null = null;
@@ -39,7 +39,7 @@
         <div class="card">
             <div class="field">
                 <label>URL server</label>
-                <input type="url" bind:value={url} placeholder="https://vongkimco.hoctuthtien.com" />
+                <input type="url" bind:value={url} placeholder="https://vongkimco.hoctuthien.com" />
             </div>
 
             <div class="row">

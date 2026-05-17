@@ -12,7 +12,7 @@ bằng Rust:
 | **Admin frontend** | Rust + Askama (MVC, nằm chung backend) | Trang quản trị, xem phiên + ảnh chụp |
 | **Desktop App** | Tauri 2 + Rust + Svelte | Chạy nền, thu thập hoạt động, đồng bộ về server |
 
-Triển khai chính thức: **https://vongkimco.hoctuthtien.com**
+Triển khai chính thức: **https://vongkimco.hoctuthien.com**
 
 ---
 
@@ -20,7 +20,7 @@ Triển khai chính thức: **https://vongkimco.hoctuthtien.com**
 
 ### Desktop App (đa nền tảng — Windows / macOS / Linux)
 - **Chọn server backend** ngay từ lần chạy đầu tiên (mặc định
-  `https://vongkimco.hoctuthtien.com`, có thể custom domain).
+  `https://vongkimco.hoctuthien.com`, có thể custom domain).
 - **Đăng nhập bằng Google** qua "device link" flow — mở browser, đăng nhập, paste mã.
 - **Bắt đầu / dừng phiên** bằng nút hoặc phím tắt toàn cục (cấu hình được).
 - **Chụp ảnh màn hình định kỳ**, nén JPEG ~50% chất lượng + resize ≤ 1280px để
@@ -57,16 +57,16 @@ Triển khai chính thức: **https://vongkimco.hoctuthtien.com**
 1. **Tạo Google OAuth Credentials** ở
    <https://console.cloud.google.com/apis/credentials>
    - Loại: **Web application**
-   - Authorized redirect URI: `https://vongkimco.hoctuthtien.com/admin/oauth/callback`
+   - Authorized redirect URI: `https://vongkimco.hoctuthien.com/admin/oauth/callback`
    - Lưu lại `client_id` và `client_secret`.
 
 2. **Trên Coolify**:
    - Tạo **New Resource → Docker Compose**, trỏ tới repo này.
    - Compose file: `docker-compose.yml`
-   - Thiết lập domain: `vongkimco.hoctuthtien.com` (Coolify tự cấp TLS qua Let's Encrypt).
+   - Thiết lập domain: `vongkimco.hoctuthien.com` (Coolify tự cấp TLS qua Let's Encrypt).
    - Thêm biến môi trường (xem `.env.example`):
      ```env
-     PUBLIC_URL=https://vongkimco.hoctuthtien.com
+     PUBLIC_URL=https://vongkimco.hoctuthien.com
      ADMIN_EMAILS=dvcuong.hust@gmail.com
      # Có thể bỏ trống — admin tự thêm member qua /admin/members sau khi deploy
      MEMBER_EMAILS=
@@ -207,7 +207,7 @@ GitHub Release.
 
 ## 🔌 Khi mở Desktop App lần đầu
 
-1. **Chọn server** — mặc định `https://vongkimco.hoctuthtien.com`. Có thể đổi
+1. **Chọn server** — mặc định `https://vongkimco.hoctuthien.com`. Có thể đổi
    sang server backend khác (ví dụ instance riêng của công ty).
 2. **Đăng nhập Google** — ứng dụng hiển thị mã `XXXX-XXXX` và mở trình duyệt.
 3. **Vào trang `/device/activate`** trên server, đăng nhập Google, paste mã,

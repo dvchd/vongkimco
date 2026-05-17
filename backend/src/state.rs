@@ -28,7 +28,7 @@ impl Config {
         let database_url = env::var("DATABASE_URL")
             .unwrap_or_else(|_| "sqlite://./data/vongkimco.db?mode=rwc".to_string());
         let public_url = env::var("PUBLIC_URL")
-            .unwrap_or_else(|_| "https://vongkimco.hoctuthtien.com".to_string());
+            .unwrap_or_else(|_| "https://vongkimco.hoctuthien.com".to_string());
         let google_client_id = env::var("GOOGLE_CLIENT_ID").unwrap_or_default();
         let google_client_secret = env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default();
         let session_secret = env::var("SESSION_SECRET")
