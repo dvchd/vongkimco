@@ -33,8 +33,6 @@ services:
             RUST_LOG: ${RUST_LOG:-info,sqlx=warn,tower_http=info}
         volumes:
             - vongkimco_data:/data
-        ports:
-            - "8080:8080"
         # Coolify exposes the SERVICE_FQDN_* labels for reverse-proxy routing.
         labels:
             coolify.managed: "true"
