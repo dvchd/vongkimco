@@ -20,19 +20,18 @@ RUN cargo build --release --bin vongkimco-backend
 FROM debian:bookworm-slim AS runtime
 ENV TZ=Asia/Ho_Chi_Minh
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl libsqlite3-0 \
+    ca-certificates curl libsqlite3-0 su-exec \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -ms /bin/bash app \
-    && mkdir -p /data /data/screenshots \
-    && chown -R app:app /data
-USER app
+RUN useradd -ms /bin/bash app
 WORKDIR /app
 
 COPY --from=builder /src/target/release/vongkimco-backend /app/vongkimco-backend
 COPY --from=builder /src/templates /app/templates
 COPY --from=builder /src/static /app/static
 COPY --from=builder /src/migrations /app/migrations
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 ENV PORT=8080 \
     DATABASE_URL="sqlite:///data/vongkimco.db?mode=rwc" \
@@ -45,4 +44,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8080/api/v1/health || exit 1
 
-ENTRYPOINT ["/app/vongkimco-backend"]
+ENTRYPOINT ["/app/entrypoint.sh"]
