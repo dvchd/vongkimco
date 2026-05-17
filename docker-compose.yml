@@ -1,0 +1,45 @@
+# Vòng Kim Cô — production stack
+# Deploy to Coolify: select "Docker Compose" with this file as source.
+# Coolify will provision a Caddy/Traefik reverse proxy that terminates TLS
+# for https://vongkimco.hoctuthtien.com and forwards to the backend on :8080.
+
+services:
+    backend:
+        build:
+            context: ./backend
+            dockerfile: Dockerfile
+        image: vongkimco-backend:latest
+        container_name: vongkimco-backend
+        restart: unless-stopped
+        environment:
+            # Public URL the backend uses to build OAuth redirect + device-activate links.
+            PUBLIC_URL: ${PUBLIC_URL:-https://vongkimco.hoctuthtien.com}
+            PORT: "8080"
+            DATABASE_URL: "sqlite:///data/vongkimco.db?mode=rwc"
+            SCREENSHOT_DIR: "/data/screenshots"
+            MAX_SCREENSHOT_BYTES: "2097152"
+            # Comma-separated admin email allow-list.
+            ADMIN_EMAILS: ${ADMIN_EMAILS:-dvcuong.hust@gmail.com}
+            # Comma-separated member email allow-list (admins are implicit).
+            # More members can be added at runtime via /admin/members or by
+            # approving requests submitted by guests.
+            MEMBER_EMAILS: ${MEMBER_EMAILS:-hoctuthien11@gmail.com,dhammacode@gmail.com}
+            # Contact info shown on the "pending approval" / feedback pages.
+            MAINTAINER_FACEBOOK: ${MAINTAINER_FACEBOOK:-https://fb.com/dvcuong.hust}
+            MAINTAINER_EMAIL: ${MAINTAINER_EMAIL:-dvcuong.hust@gmail.com}
+            GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+            GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+            SESSION_SECRET: ${SESSION_SECRET}
+            RUST_LOG: ${RUST_LOG:-info,sqlx=warn,tower_http=info}
+        volumes:
+            - vongkimco_data:/data
+        ports:
+            - "8080:8080"
+        # Coolify exposes the SERVICE_FQDN_* labels for reverse-proxy routing.
+        labels:
+            coolify.managed: "true"
+            coolify.proxy.port: "8080"
+            coolify.proxy.healthcheck.path: "/api/v1/health"
+
+volumes:
+    vongkimco_data:

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ viewing.email }} · Vòng Kim Cô{% endblock %}
+{% block content %}
+<h1>{{ viewing.email }}</h1>
+<p class="muted">{{ viewing.name }} · {% if viewing.is_admin %}<span class="badge admin">admin</span>{% endif %}</p>
+
+<div class="kpis">
+    <div class="kpi"><div class="kpi-value">{{ viewing.session_count }}</div><div class="kpi-label">Phiên</div></div>
+    <div class="kpi"><div class="kpi-value">{{ viewing.last_seen }}</div><div class="kpi-label">Phiên gần nhất</div></div>
+</div>
+
+<h2>Lịch sử phiên</h2>
+<table class="data">
+    <thead>
+        <tr><th>Bắt đầu</th><th>Kết thúc</th><th>Thời lượng</th><th>Ghi chú</th></tr>
+    </thead>
+    <tbody>
+        {% for s in sessions %}
+        <tr>
+            <td><a href="/admin/sessions/{{ s.id }}">{{ s.started_at }}</a></td>
+            <td>{{ s.ended_at }}</td>
+            <td>{{ s.duration }}</td>
+            <td class="muted">{{ s.note }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

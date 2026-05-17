@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Tổng quan · Vòng Kim Cô{% endblock %}
+{% block content %}
+<h1>Tổng quan</h1>
+
+<div class="kpis">
+    <div class="kpi"><div class="kpi-value">{{ total_users }}</div><div class="kpi-label">Người dùng</div></div>
+    <div class="kpi"><div class="kpi-value">{{ total_sessions }}</div><div class="kpi-label">Phiên làm việc</div></div>
+    <div class="kpi"><div class="kpi-value">{{ active_sessions }}</div><div class="kpi-label">Đang hoạt động</div></div>
+    <div class="kpi"><div class="kpi-value">{{ total_screenshots }}</div><div class="kpi-label">Ảnh chụp</div></div>
+</div>
+
+<h2>Phiên gần đây</h2>
+<table class="data">
+    <thead>
+        <tr><th>Người dùng</th><th>Bắt đầu</th><th>Kết thúc</th><th>Thời lượng</th><th>Ghi chú</th></tr>
+    </thead>
+    <tbody>
+        {% for s in recent_sessions %}
+        <tr>
+            <td>{{ s.user_email }}</td>
+            <td><a href="/admin/sessions/{{ s.id }}">{{ s.started_at }}</a></td>
+            <td>{{ s.ended_at }}</td>
+            <td>{{ s.duration }}</td>
+            <td class="muted">{{ s.note }}</td>
+        </tr>
+        {% endfor %}
+        {% if recent_sessions.is_empty() %}
+        <tr><td colspan="5" class="muted center">Chưa có phiên nào.</td></tr>
+        {% endif %}
+    </tbody>
+</table>
+{% endblock %}

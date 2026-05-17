@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Phản hồi · Vòng Kim Cô{% endblock %}
+{% block nav %}
+    <a href="/feedback">Phản hồi của tôi</a>
+    {% if !is_member %}<a href="/pending">Xin làm thành viên</a>{% endif %}
+    {% if is_admin %}<a href="/admin">Trang quản trị</a>{% endif %}
+{% endblock %}
+{% block content %}
+<h1>Gửi phản hồi</h1>
+<p class="muted">
+    Đăng bình luận, báo lỗi, hoặc đề xuất tính năng. Quản trị viên sẽ phản hồi
+    bạn trực tiếp tại đây.
+</p>
+
+{% if !is_member %}
+<div class="banner" style="border-left-color: var(--primary);">
+    <strong>👋 Bạn đang là khách.</strong> Bạn có thể gửi phản hồi tự do, nhưng
+    để dùng được desktop app cần được phê duyệt làm thành viên.
+    <a href="/pending" class="btn-primary" style="margin-left: 12px;">Xin làm thành viên</a>
+</div>
+{% endif %}
+
+<div class="banner">
+    <strong>Lưu ý:</strong> ô bình luận chỉ chấp nhận văn bản (để tránh nội dung
+    không phù hợp). Nếu cần gửi ảnh màn hình hoặc file, vui lòng liên hệ
+    <a href="{{ maintainer_facebook }}" target="_blank">Facebook</a>
+    hoặc email <a href="mailto:{{ maintainer_email }}">{{ maintainer_email }}</a>.
+</div>
+
+<div class="card">
+    <form method="POST" action="/feedback">
+        <div class="row" style="gap: 12px;">
+            <div class="field" style="flex: 0 0 180px;">
+                <label>Loại</label>
+                <select name="category">
+                    <option value="comment">💬 Bình luận</option>
+                    <option value="bug">🐛 Báo lỗi</option>
+                    <option value="feature">✨ Đề xuất</option>
+                </select>
+            </div>
+            <div class="field" style="flex: 1;">
+                <label>Tiêu đề (tuỳ chọn)</label>
+                <input type="text" name="title" maxlength="200" placeholder="Tóm tắt ngắn gọn" />
+            </div>
+        </div>
+        <div class="field">
+            <label>Nội dung</label>
+            <textarea name="body" rows="6" maxlength="4000" required
+                placeholder="Mô tả chi tiết. Tối đa 4000 ký tự."></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Gửi</button>
+    </form>
+</div>
+
+<h2>Bài viết của bạn</h2>
+{% if posts.is_empty() %}
+    <p class="muted">Bạn chưa gửi phản hồi nào.</p>
+{% else %}
+<table class="data">
+    <thead>
+        <tr><th>Loại</th><th>Tiêu đề / Trích đoạn</th><th>Trạng thái</th><th>Phản hồi</th><th>Gửi lúc</th></tr>
+    </thead>
+    <tbody>
+        {% for p in posts %}
+        <tr>
+            <td>{{ p.category_label }}</td>
+            <td><a href="/feedback/{{ p.id }}">
+                {% if !p.title.is_empty() %}<strong>{{ p.title }}</strong><br>{% endif %}
+                <span class="muted small">{{ p.body }}</span>
+            </a></td>
+            <td><span class="badge status-{{ p.status }}">{{ p.status_label }}</span></td>
+            <td>{{ p.reply_count }}</td>
+            <td class="small muted">{{ p.created_at }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

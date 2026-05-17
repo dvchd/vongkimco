@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{% block title %}Vòng Kim Cô{% endblock %}</title>
+    <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="logo">⚙</span>
+        <a href="/admin">Vòng Kim Cô</a>
+    </div>
+    <nav class="nav">
+        {% block nav %}
+        <a href="/admin">Tổng quan</a>
+        <a href="/admin/users">Người dùng</a>
+        <a href="/admin/screenshots">Ảnh chụp</a>
+        <a href="/admin/members">Thành viên</a>
+        <a href="/admin/feedback">Phản hồi</a>
+        {% endblock %}
+    </nav>
+    <div class="user">
+        {% block user %}
+        <span>{{ user_email }}</span>
+        <a href="/admin/logout" class="btn-ghost">Đăng xuất</a>
+        {% endblock %}
+    </div>
+</header>
+<main class="container">
+    {% block content %}{% endblock %}
+</main>
+<footer class="footer">
+    <small>Vòng Kim Cô · Open Source · MIT</small>
+</footer>
+</body>
+</html>

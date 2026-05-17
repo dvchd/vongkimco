@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Đăng nhập · Vòng Kim Cô</title>
+    <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body class="centered">
+<div class="login-card">
+    <h1>⚙ Vòng Kim Cô</h1>
+    <p class="muted">Hệ thống giám sát phiên làm việc trực tuyến.</p>
+    {% match reason %}
+    {% when Some with (r) %}
+        {% if r == "device" %}
+            <div class="info">Đăng nhập để kích hoạt thiết bị desktop.</div>
+        {% endif %}
+    {% when None %}
+    {% endmatch %}
+    <a href="/admin/oauth/start" class="btn-primary">Đăng nhập bằng Google</a>
+    <p class="muted small">Chỉ tài khoản có trong danh sách quản trị mới truy cập được trang quản trị.</p>
+</div>
+</body>
+</html>

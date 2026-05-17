@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} · Phản hồi{% endblock %}
+{% block nav %}
+    {% if is_admin %}
+        <a href="/admin/feedback">⟵ Tất cả phản hồi</a>
+        <a href="/admin">Trang quản trị</a>
+    {% else %}
+        <a href="/feedback">⟵ Phản hồi của tôi</a>
+    {% endif %}
+{% endblock %}
+{% block content %}
+<h1>
+    {{ post.category_label }}
+    {% if !post.title.is_empty() %} · {{ post.title }}{% endif %}
+</h1>
+<p class="muted small">
+    Người gửi: <strong>{{ author_email }}</strong> ·
+    {{ post.created_at }} ·
+    Trạng thái: <span class="badge status-{{ post.status }}">{{ post.status_label }}</span>
+</p>
+
+<div class="card">
+    <div class="post-body">{{ post.body }}</div>
+</div>
+
+<h2>Phản hồi ({{ replies.len() }})</h2>
+{% if replies.is_empty() %}
+    <p class="muted">Chưa có phản hồi nào.</p>
+{% else %}
+    {% for r in replies %}
+    <div class="card reply {% if r.is_admin_reply %}reply-admin{% endif %}">
+        <div class="reply-head">
+            <strong>{{ r.author_email }}</strong>
+            {% if r.is_admin_reply %}<span class="badge admin">admin</span>{% endif %}
+            <span class="muted small">· {{ r.created_at }}</span>
+        </div>
+        <div class="post-body">{{ r.body }}</div>
+    </div>
+    {% endfor %}
+{% endif %}
+
+{% if can_reply %}
+<h2>Gửi phản hồi</h2>
+<div class="card">
+    <form method="POST" action="{% if is_admin %}/admin/feedback/{{ post.id }}/reply{% else %}/feedback/{{ post.id }}/reply{% endif %}">
+        <div class="field">
+            <textarea name="body" rows="4" maxlength="4000" required
+                placeholder="Nhập phản hồi…"></textarea>
+        </div>
+        {% if is_admin %}
+        <div class="row" style="gap: 12px; align-items: center;">
+            <label style="text-transform: none; color: var(--text);">Đổi trạng thái:</label>
+            <select name="status" style="max-width: 200px;">
+                <option value="">— giữ nguyên —</option>
+                <option value="open" {% if post.status == "open" %}selected{% endif %}>Đang mở</option>
+                <option value="in_progress" {% if post.status == "in_progress" %}selected{% endif %}>Đang xử lý</option>
+                <option value="resolved" {% if post.status == "resolved" %}selected{% endif %}>Đã giải quyết</option>
+                <option value="wontfix" {% if post.status == "wontfix" %}selected{% endif %}>Không xử lý</option>
+            </select>
+            <button type="submit" class="btn-primary">Gửi phản hồi</button>
+        </div>
+        {% else %}
+        <button type="submit" class="btn-primary">Gửi phản hồi</button>
+        {% endif %}
+    </form>
+</div>
+{% endif %}
+
+<style>
+.post-body { white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
+.reply-head { margin-bottom: 8px; }
+.reply-admin { border-left: 3px solid var(--primary); }
+.status-open { background: var(--surface-2); }
+.status-in_progress { background: #3a3a1a; color: #fff7c4; }
+.status-resolved { background: #1a3a1a; color: #c4ffc4; }
+.status-wontfix { background: #3a1a1a; color: #ffb4b4; }
+textarea {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+</style>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Người dùng · Vòng Kim Cô{% endblock %}
+{% block content %}
+<h1>Người dùng</h1>
+<table class="data">
+    <thead>
+        <tr><th>Email</th><th>Tên</th><th>Vai trò</th><th>Số phiên</th><th>Phiên gần nhất</th></tr>
+    </thead>
+    <tbody>
+        {% for u in users %}
+        <tr>
+            <td><a href="/admin/users/{{ u.id }}">{{ u.email }}</a></td>
+            <td>{{ u.name }}</td>
+            <td>{% if u.is_admin %}<span class="badge admin">admin</span>{% else %}user{% endif %}</td>
+            <td>{{ u.session_count }}</td>
+            <td>{{ u.last_seen }}</td>
+        </tr>
+        {% endfor %}
+        {% if users.is_empty() %}
+        <tr><td colspan="5" class="muted center">Chưa có người dùng.</td></tr>
+        {% endif %}
+    </tbody>
+</table>
+{% endblock %}

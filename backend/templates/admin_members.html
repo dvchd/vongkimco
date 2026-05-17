@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Thành viên · Vòng Kim Cô{% endblock %}
+{% block content %}
+<h1>Quản lý thành viên</h1>
+<p class="muted">
+    Chỉ những email trong allow-list mới được liên kết desktop và gửi dữ liệu lên
+    server này. Admin (cấu hình qua env <code>ADMIN_EMAILS</code>) luôn được coi
+    là thành viên.
+</p>
+
+{% match flash %}
+{% when Some with (msg) %}
+    <div class="banner ok small">{{ msg }}</div>
+{% when None %}
+{% endmatch %}
+
+<h2>Yêu cầu xin làm thành viên ({{ pending_requests.len() }})</h2>
+{% if pending_requests.is_empty() %}
+    <p class="muted">Không có yêu cầu nào đang chờ duyệt.</p>
+{% else %}
+<table class="data">
+    <thead>
+        <tr><th>Email</th><th>Lời nhắn</th><th>Gửi lúc</th><th>Hành động</th></tr>
+    </thead>
+    <tbody>
+    {% for r in pending_requests %}
+        <tr>
+            <td><strong>{{ r.email }}</strong></td>
+            <td class="muted">{{ r.note }}</td>
+            <td class="small muted">{{ r.created_at }}</td>
+            <td>
+                <div class="row" style="gap: 6px;">
+                    <form method="POST" action="/admin/members/approve-request" style="margin: 0;">
+                        <input type="hidden" name="request_id" value="{{ r.id }}" />
+                        <button type="submit" class="btn-primary">Duyệt</button>
+                    </form>
+                    <form method="POST" action="/admin/members/reject-request" style="margin: 0;">
+                        <input type="hidden" name="request_id" value="{{ r.id }}" />
+                        <button type="submit" class="btn-ghost"
+                            onclick="return confirm('Từ chối {{ r.email }}?')">Từ chối</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<h2>Thành viên cấu hình qua env (MEMBER_EMAILS)</h2>
+{% if env_members.is_empty() %}
+    <p class="muted">Không có. Đặt <code>MEMBER_EMAILS=a@x.com,b@y.com</code> trong env nếu muốn.</p>
+{% else %}
+<table class="data">
+    <thead><tr><th>Email</th></tr></thead>
+    <tbody>
+    {% for e in env_members %}
+        <tr><td>{{ e }}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<h2>Thêm thành viên</h2>
+<div class="card">
+    <form method="POST" action="/admin/members" class="row" style="gap: 10px; flex-wrap: wrap;">
+        <input type="email" name="email" placeholder="email@example.com" required style="flex: 1; min-width: 240px;" />
+        <input type="text" name="note" placeholder="Ghi chú (vd: team A)" style="flex: 1; min-width: 200px;" />
+        <button type="submit" class="btn-primary">Thêm</button>
+    </form>
+</div>
+
+<h2>Allow-list trong DB</h2>
+{% if db_members.is_empty() %}
+    <p class="muted">Chưa có thành viên nào được thêm qua giao diện.</p>
+{% else %}
+<table class="data">
+    <thead>
+        <tr><th>Email</th><th>Ghi chú</th><th>Người thêm</th><th>Thêm lúc</th><th>Đã đăng nhập</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for m in db_members %}
+        <tr>
+            <td><strong>{{ m.email }}</strong></td>
+            <td class="muted">{{ m.note }}</td>
+            <td class="small muted">{{ m.added_by_email }}</td>
+            <td class="small muted">{{ m.created_at }}</td>
+            <td>{% if m.has_user %}✓{% else %}—{% endif %}</td>
+            <td>
+                <form method="POST" action="/admin/members/remove" style="margin: 0;">
+                    <input type="hidden" name="email" value="{{ m.email }}" />
+                    <button type="submit" class="btn-ghost" onclick="return confirm('Gỡ {{ m.email }} khỏi allow-list?')">Gỡ</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

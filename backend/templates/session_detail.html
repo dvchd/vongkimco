@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Phiên {{ session.id }} · Vòng Kim Cô{% endblock %}
+{% block content %}
+<h1>Chi tiết phiên</h1>
+<p class="muted">Người dùng: <strong>{{ owner_email }}</strong></p>
+
+<div class="kpis">
+    <div class="kpi"><div class="kpi-value">{{ session.started_at }}</div><div class="kpi-label">Bắt đầu</div></div>
+    <div class="kpi"><div class="kpi-value">{{ session.ended_at }}</div><div class="kpi-label">Kết thúc</div></div>
+    <div class="kpi"><div class="kpi-value">{{ session.duration }}</div><div class="kpi-label">Thời lượng</div></div>
+    <div class="kpi"><div class="kpi-value">{{ activity_summary.active_pct }}%</div><div class="kpi-label">Active</div></div>
+</div>
+
+<h2>Hoạt động</h2>
+<table class="data">
+    <thead>
+        <tr><th>Mẫu</th><th>Active</th><th>Idle</th><th>Bàn phím</th><th>Chuột</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ activity_summary.total_samples }}</td>
+            <td>{{ activity_summary.active_samples }}</td>
+            <td>{{ activity_summary.idle_samples }}</td>
+            <td>{{ activity_summary.keyboard_events }}</td>
+            <td>{{ activity_summary.mouse_events }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Ứng dụng đang chạy (gần đây)</h2>
+<table class="data">
+    <thead>
+        <tr><th>Thời điểm</th><th>Ứng dụng foreground</th><th>Cửa sổ</th></tr>
+    </thead>
+    <tbody>
+        {% for a in recent_apps %}
+        <tr>
+            <td class="small">{{ a.sampled_at }}</td>
+            <td><strong>{{ a.foreground_app }}</strong></td>
+            <td class="muted">{{ a.foreground_title }}</td>
+        </tr>
+        {% endfor %}
+        {% if recent_apps.is_empty() %}
+        <tr><td colspan="3" class="muted center">Chưa có dữ liệu.</td></tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<h2>Ảnh chụp màn hình</h2>
+<div class="grid-shots">
+    {% for sh in screenshots %}
+    <a class="shot" href="/admin/screenshots/{{ sh.id }}/image" target="_blank">
+        <img src="/admin/screenshots/{{ sh.id }}/image" alt="screenshot" loading="lazy" />
+        <div class="shot-meta">{{ sh.captured_at }} · {{ sh.bytes }}b</div>
+    </a>
+    {% endfor %}
+    {% if screenshots.is_empty() %}
+    <p class="muted">Không có ảnh chụp trong phiên này.</p>
+    {% endif %}
+</div>
+{% endblock %}

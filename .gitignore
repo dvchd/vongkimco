@@ -1,0 +1,30 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+
+# Env
+.env
+.env.local
+
+# Backend
+backend/target/
+backend/data/
+backend/Cargo.lock
+
+# Desktop
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/schemas/
+desktop/src-tauri/Cargo.lock
+desktop/src-tauri/icons/*.png
+desktop/src-tauri/icons/*.ico
+desktop/src-tauri/icons/*.icns
+!desktop/src-tauri/icons/README.md
+
+# Memory
+memory/

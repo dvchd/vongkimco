@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Kích hoạt thiết bị · Vòng Kim Cô</title>
+    <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body class="centered">
+<div class="login-card">
+    <h1>Kích hoạt thiết bị</h1>
+    <p>Bạn đang đăng nhập với <strong>{{ user_email }}</strong>.</p>
+    <p class="muted">Nhập mã hiển thị trên ứng dụng desktop để liên kết thiết bị với tài khoản của bạn.</p>
+    {% match error %}
+    {% when Some with (e) %}
+        <div class="error">{{ e }}</div>
+    {% when None %}
+    {% endmatch %}
+    <form method="POST" action="/device/activate">
+        <input type="text" name="code" value="{{ code }}" placeholder="XXXX-XXXX" maxlength="16" required class="code-input" autofocus />
+        <button type="submit" class="btn-primary">Phê duyệt</button>
+    </form>
+</div>
+</body>
+</html>

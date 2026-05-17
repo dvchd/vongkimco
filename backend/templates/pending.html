@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Xin làm thành viên · Vòng Kim Cô{% endblock %}
+{% block nav %}
+    <a href="/feedback">Phản hồi</a>
+    <a href="/pending">Trạng thái thành viên</a>
+{% endblock %}
+{% block content %}
+<h1>Xin làm thành viên</h1>
+<p class="muted">
+    Tài khoản <strong>{{ user_email }}</strong> hiện chưa nằm trong danh sách
+    thành viên của server này. Bạn vẫn có thể gửi
+    <a href="/feedback">phản hồi / báo lỗi</a>, nhưng để dùng được desktop app
+    bạn cần được quản trị viên phê duyệt.
+</p>
+
+{% match flash %}
+{% when Some with (msg) %}
+    <div class="banner ok small">{{ msg }}</div>
+{% when None %}
+{% endmatch %}
+
+{% match existing %}
+{% when Some with (req) %}
+    <div class="card">
+        <h2 style="margin-top: 0;">Yêu cầu hiện tại</h2>
+        <p>
+            Trạng thái:
+            <span class="badge status-{{ req.status }}">{{ req.status_label }}</span>
+        </p>
+        {% if !req.note.is_empty() %}
+            <p class="muted">Lời nhắn của bạn:</p>
+            <div class="quote">{{ req.note }}</div>
+        {% endif %}
+        <p class="muted small">
+            Gửi lần đầu: {{ req.created_at }} ·
+            Cập nhật: {{ req.updated_at }} ·
+            Quyết định: {{ req.decided_at }}
+        </p>
+    </div>
+
+    {% if req.status == "rejected" || req.status == "pending" %}
+    <div class="card">
+        <h2 style="margin-top: 0;">
+            {% if req.status == "rejected" %}Gửi lại yêu cầu{% else %}Cập nhật lời nhắn{% endif %}
+        </h2>
+        <form method="POST" action="/membership/request">
+            <div class="field">
+                <label>Lời nhắn (tuỳ chọn)</label>
+                <textarea name="note" rows="4" maxlength="1000"
+                    placeholder="Ví dụ: thành viên team A, làm việc với @manager…">{{ req.note }}</textarea>
+            </div>
+            <button type="submit" class="btn-primary">Gửi yêu cầu</button>
+        </form>
+    </div>
+    {% endif %}
+
+{% when None %}
+    <div class="card">
+        <h2 style="margin-top: 0;">Gửi yêu cầu</h2>
+        <form method="POST" action="/membership/request">
+            <div class="field">
+                <label>Lời nhắn (tuỳ chọn)</label>
+                <textarea name="note" rows="4" maxlength="1000"
+                    placeholder="Bạn là ai? Vì sao xin làm thành viên?"></textarea>
+            </div>
+            <button type="submit" class="btn-primary">Xin làm thành viên</button>
+        </form>
+    </div>
+{% endmatch %}
+
+<h2>Liên hệ trực tiếp</h2>
+<p class="muted">Nếu cần phản hồi nhanh hoặc gửi kèm hình ảnh, liên hệ:</p>
+<ul>
+    <li>Facebook: <a href="{{ maintainer_facebook }}" target="_blank">{{ maintainer_facebook }}</a></li>
+    <li>Email: <a href="mailto:{{ maintainer_email }}">{{ maintainer_email }}</a></li>
+</ul>
+
+<style>
+.status-pending { background: #3a3a1a; color: #fff7c4; }
+.status-approved { background: #1a3a1a; color: #c4ffc4; }
+.status-rejected { background: #3a1a1a; color: #ffb4b4; }
+.quote {
+    background: var(--surface-2);
+    border-left: 3px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 13px;
+    line-height: 1.5;
+}
+textarea {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+</style>
+{% endblock %}
