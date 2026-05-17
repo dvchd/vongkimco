@@ -4,10 +4,10 @@ FROM rust:1.83-slim AS builder
 WORKDIR /src
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    pkg-config libssl-dev ca-certificates \
+    pkg-config libssl-dev libsqlite3-dev ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY Cargo.toml ./
+COPY Cargo.toml Cargo.lock ./
 # Touch a stub to allow dependency build caching
 RUN mkdir -p src && echo "fn main(){}" > src/main.rs && cargo build --release && rm -rf src
 

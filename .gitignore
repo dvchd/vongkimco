@@ -13,7 +13,6 @@ Thumbs.db
 # Backend
 backend/target/
 backend/data/
-backend/Cargo.lock
 
 # Desktop
 desktop/node_modules/
