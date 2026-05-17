@@ -21,7 +21,6 @@ const MAX_NOTE: usize = 1000;
 #[template(path = "pending.html")]
 pub struct PendingTemplate {
     pub user_email: String,
-    pub is_member: bool,
     pub maintainer_facebook: String,
     pub maintainer_email: String,
     pub existing: Option<RequestRow>,
@@ -83,10 +82,8 @@ async fn pending_page_with_flash(
     }
     let existing = fetch_request(state, &u.id).await?;
 
-    let is_member = u.is_member_bool();
     Ok(PendingTemplate {
         user_email: u.email,
-        is_member,
         maintainer_facebook: state.config.maintainer_facebook.clone(),
         maintainer_email: state.config.maintainer_email.clone(),
         existing,

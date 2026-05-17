@@ -51,8 +51,9 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .route("/app-snapshots", post(device_api::ingest_app_snapshots))
         .route(
             "/screenshots",
-            post(device_api::upload_screenshot)
-                .layer(DefaultBodyLimit::max(state.config.max_screenshot_bytes + 16 * 1024)),
+            post(device_api::upload_screenshot).layer(DefaultBodyLimit::max(
+                state.config.max_screenshot_bytes + 16 * 1024,
+            )),
         );
 
     let admin_routes = Router::new()
@@ -66,7 +67,10 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .route("/sessions/:id", get(admin::session_detail))
         .route("/screenshots", get(admin::screenshots_list))
         .route("/screenshots/:id/image", get(admin::screenshot_file))
-        .route("/members", get(admin::members_page).post(admin::members_add))
+        .route(
+            "/members",
+            get(admin::members_page).post(admin::members_add),
+        )
         .route("/members/remove", post(admin::members_remove))
         .route("/members/approve-request", post(membership::approve))
         .route("/members/reject-request", post(membership::reject))
@@ -79,8 +83,10 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .route("/:id", get(feedback::detail))
         .route("/:id/reply", post(feedback::reply_member));
 
-    let device_pages = Router::new()
-        .route("/activate", get(desktop_auth::device_activate_page).post(desktop_auth::device_activate_submit));
+    let device_pages = Router::new().route(
+        "/activate",
+        get(desktop_auth::device_activate_page).post(desktop_auth::device_activate_submit),
+    );
 
     let root = Router::new()
         .route("/", get(feedback::home_redirect))
@@ -97,4 +103,3 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
 
     Ok(root)
 }
-

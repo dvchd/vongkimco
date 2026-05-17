@@ -7,7 +7,7 @@ use askama::Template;
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::header;
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::response::{IntoResponse, Response};
 use serde::Deserialize;
 
 use crate::auth::{AdminUser, CurrentUser};
@@ -38,7 +38,6 @@ pub struct ActivateDoneTemplate {
 #[template(path = "dashboard.html")]
 pub struct DashboardTemplate {
     pub user_email: String,
-    pub is_admin: bool,
     pub total_users: i64,
     pub total_sessions: i64,
     pub total_screenshots: i64,
@@ -139,25 +138,37 @@ pub struct ScreenshotRow {
 }
 
 fn fmt_duration(seconds: i64) -> String {
-    if seconds < 0 { return "—".into(); }
+    if seconds < 0 {
+        return "—".into();
+    }
     let h = seconds / 3600;
     let m = (seconds % 3600) / 60;
     let s = seconds % 60;
-    if h > 0 { format!("{}h {}m", h, m) }
-    else if m > 0 { format!("{}m {}s", m, s) }
-    else { format!("{}s", s) }
+    if h > 0 {
+        format!("{}h {}m", h, m)
+    } else if m > 0 {
+        format!("{}m {}s", m, s)
+    } else {
+        format!("{}s", s)
+    }
 }
 
 fn parse_dt(s: &str) -> Option<chrono::DateTime<chrono::Utc>> {
-    chrono::DateTime::parse_from_rfc3339(s).ok().map(|d| d.with_timezone(&chrono::Utc))
+    chrono::DateTime::parse_from_rfc3339(s)
+        .ok()
+        .map(|d| d.with_timezone(&chrono::Utc))
         .or_else(|| {
-            chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").ok()
+            chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+                .ok()
                 .map(|n| chrono::DateTime::from_naive_utc_and_offset(n, chrono::Utc))
         })
 }
 
 pub async fn login_page(Query(q): Query<std::collections::HashMap<String, String>>) -> Response {
-    LoginTemplate { reason: q.get("reason").cloned() }.into_response()
+    LoginTemplate {
+        reason: q.get("reason").cloned(),
+    }
+    .into_response()
 }
 
 pub async fn admin_root(
@@ -168,10 +179,19 @@ pub async fn admin_root(
         return Err(AppError::Forbidden);
     }
 
-    let total_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users").fetch_one(&state.db).await?;
-    let total_sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions").fetch_one(&state.db).await?;
-    let total_screenshots: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM screenshots").fetch_one(&state.db).await?;
-    let active_sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE ended_at IS NULL").fetch_one(&state.db).await?;
+    let total_users: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+        .fetch_one(&state.db)
+        .await?;
+    let total_sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions")
+        .fetch_one(&state.db)
+        .await?;
+    let total_screenshots: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM screenshots")
+        .fetch_one(&state.db)
+        .await?;
+    let active_sessions: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE ended_at IS NULL")
+            .fetch_one(&state.db)
+            .await?;
 
     let rows = sqlx::query_as::<_, (String, String, String, Option<String>, Option<String>)>(
         "SELECT s.id, u.email, s.started_at, s.ended_at, s.note
@@ -184,9 +204,15 @@ pub async fn admin_root(
     let recent_sessions: Vec<SessionRow> = rows
         .into_iter()
         .map(|(id, email, started_at, ended_at, note)| {
-            let dur = match (parse_dt(&started_at), ended_at.as_ref().and_then(|s| parse_dt(s))) {
+            let dur = match (
+                parse_dt(&started_at),
+                ended_at.as_ref().and_then(|s| parse_dt(s)),
+            ) {
                 (Some(a), Some(b)) => fmt_duration((b - a).num_seconds()),
-                (Some(a), None) => format!("ongoing ({})", fmt_duration((chrono::Utc::now() - a).num_seconds())),
+                (Some(a), None) => format!(
+                    "ongoing ({})",
+                    fmt_duration((chrono::Utc::now() - a).num_seconds())
+                ),
                 _ => "—".into(),
             };
             SessionRow {
@@ -202,7 +228,6 @@ pub async fn admin_root(
 
     Ok(DashboardTemplate {
         user_email: u.email,
-        is_admin: true,
         total_users,
         total_sessions,
         total_screenshots,
@@ -238,7 +263,11 @@ pub async fn users_list(
         })
         .collect();
 
-    Ok(UsersTemplate { user_email: u.email, users }.into_response())
+    Ok(UsersTemplate {
+        user_email: u.email,
+        users,
+    }
+    .into_response())
 }
 
 pub async fn user_detail(
@@ -272,9 +301,15 @@ pub async fn user_detail(
     let sessions: Vec<SessionRow> = rows
         .into_iter()
         .map(|(id, started_at, ended_at, note)| {
-            let dur = match (parse_dt(&started_at), ended_at.as_ref().and_then(|s| parse_dt(s))) {
+            let dur = match (
+                parse_dt(&started_at),
+                ended_at.as_ref().and_then(|s| parse_dt(s)),
+            ) {
                 (Some(a), Some(b)) => fmt_duration((b - a).num_seconds()),
-                (Some(a), None) => format!("ongoing ({})", fmt_duration((chrono::Utc::now() - a).num_seconds())),
+                (Some(a), None) => format!(
+                    "ongoing ({})",
+                    fmt_duration((chrono::Utc::now() - a).num_seconds())
+                ),
                 _ => "—".into(),
             };
             SessionRow {
@@ -297,7 +332,12 @@ pub async fn user_detail(
         last_seen: last_seen.unwrap_or_else(|| "—".into()),
     };
 
-    Ok(UserDetailTemplate { user_email: admin.email, viewing, sessions }.into_response())
+    Ok(UserDetailTemplate {
+        user_email: admin.email,
+        viewing,
+        sessions,
+    }
+    .into_response())
 }
 
 pub async fn session_detail(
@@ -316,9 +356,15 @@ pub async fn session_detail(
         .fetch_one(&state.db)
         .await?;
 
-    let dur = match (parse_dt(&s.started_at), s.ended_at.as_ref().and_then(|x| parse_dt(x))) {
+    let dur = match (
+        parse_dt(&s.started_at),
+        s.ended_at.as_ref().and_then(|x| parse_dt(x)),
+    ) {
         (Some(a), Some(b)) => fmt_duration((b - a).num_seconds()),
-        (Some(a), None) => format!("ongoing ({})", fmt_duration((chrono::Utc::now() - a).num_seconds())),
+        (Some(a), None) => format!(
+            "ongoing ({})",
+            fmt_duration((chrono::Utc::now() - a).num_seconds())
+        ),
         _ => "—".into(),
     };
 
@@ -419,7 +465,11 @@ pub async fn screenshots_list(
         })
         .collect();
 
-    Ok(ScreenshotsTemplate { user_email: u.email, screenshots }.into_response())
+    Ok(ScreenshotsTemplate {
+        user_email: u.email,
+        screenshots,
+    }
+    .into_response())
 }
 
 #[derive(Deserialize)]
@@ -442,16 +492,14 @@ pub async fn screenshot_file(
     .ok_or(AppError::NotFound)?;
 
     let full: PathBuf = state.config.screenshot_dir.join(&row.0);
-    let bytes = tokio::fs::read(&full).await.map_err(|e| AppError::Internal(e.to_string()))?;
+    let bytes = tokio::fs::read(&full)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
     Ok(Response::builder()
         .header(header::CONTENT_TYPE, row.1)
         .header(header::CACHE_CONTROL, "private, max-age=300")
         .body(Body::from(bytes))
         .unwrap())
-}
-
-pub async fn admin_home_redirect() -> Redirect {
-    Redirect::to("/admin")
 }
 
 // ---------- Members management ----------
@@ -470,7 +518,16 @@ async fn members_page_with_flash(
 ) -> AppResult<Response> {
     let env_members = state.config.member_emails.clone();
 
-    let rows = sqlx::query_as::<_, (String, Option<String>, String, Option<String>, Option<String>)>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            Option<String>,
+            String,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
         "SELECT m.email, m.note, m.created_at, m.added_by, u_added.email AS added_by_email
          FROM allowed_members m
          LEFT JOIN users u_added ON u_added.id = m.added_by
@@ -536,10 +593,11 @@ pub async fn members_add(
     .await?;
 
     // If the user has already signed in once, flip their is_member now.
-    let _ = sqlx::query("UPDATE users SET is_member = 1, updated_at = datetime('now') WHERE email = ?")
-        .bind(&lc)
-        .execute(&state.db)
-        .await;
+    let _ =
+        sqlx::query("UPDATE users SET is_member = 1, updated_at = datetime('now') WHERE email = ?")
+            .bind(&lc)
+            .execute(&state.db)
+            .await;
 
     members_page_with_flash(
         &state,

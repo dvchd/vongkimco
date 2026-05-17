@@ -20,7 +20,10 @@ async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
 
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,sqlx=warn,tower_http=info".into()))
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info,sqlx=warn,tower_http=info".into()),
+        )
         .init();
 
     let config = state::Config::from_env().context("Loading configuration from env")?;
@@ -30,14 +33,17 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Initializing SQLite pool")?;
 
-    db::run_migrations(&pool).await.context("Running migrations")?;
+    db::run_migrations(&pool)
+        .await
+        .context("Running migrations")?;
 
     let app_state = Arc::new(AppState::new(config.clone(), pool));
 
     // Make sure screenshot dir exists
     tokio::fs::create_dir_all(&config.screenshot_dir).await.ok();
 
-    let app = routes::build_router(app_state.clone()).await?
+    let app = routes::build_router(app_state.clone())
+        .await?
         .layer(TraceLayer::new_for_http());
 
     let addr: SocketAddr = format!("0.0.0.0:{}", config.port).parse()?;

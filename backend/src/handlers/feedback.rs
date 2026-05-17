@@ -49,11 +49,9 @@ pub struct AdminFeedbackTemplate {
     pub status_filter: String,
 }
 
-
 pub struct PostRow {
     pub id: String,
     pub author_email: String,
-    pub category: String,
     pub title: String,
     pub body: String,
     pub status: String,
@@ -101,7 +99,19 @@ pub async fn member_list(
     State(state): State<Arc<AppState>>,
     CurrentUser(u): CurrentUser,
 ) -> AppResult<Response> {
-    let rows = sqlx::query_as::<_, (String, String, String, Option<String>, String, String, String, i64)>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            String,
+            Option<String>,
+            String,
+            String,
+            String,
+            i64,
+        ),
+    >(
         "SELECT p.id, p.category, p.status, p.title, p.body, p.created_at, u.email,
                 (SELECT COUNT(*) FROM feedback_replies r WHERE r.post_id = p.id) AS reply_count
          FROM feedback_posts p JOIN users u ON u.id = p.user_id
@@ -114,18 +124,19 @@ pub async fn member_list(
 
     let posts = rows
         .into_iter()
-        .map(|(id, category, status, title, body, created_at, email, reply_count)| PostRow {
-            id,
-            author_email: email,
-            category_label: category_label(&category).to_string(),
-            category,
-            title: title.unwrap_or_default(),
-            body: truncate(&body, 200),
-            status_label: status_label(&status).to_string(),
-            status,
-            created_at,
-            reply_count,
-        })
+        .map(
+            |(id, category, status, title, body, created_at, email, reply_count)| PostRow {
+                id,
+                author_email: email,
+                category_label: category_label(&category).to_string(),
+                title: title.unwrap_or_default(),
+                body: truncate(&body, 200),
+                status_label: status_label(&status).to_string(),
+                status,
+                created_at,
+                reply_count,
+            },
+        )
         .collect();
 
     let is_admin = u.is_admin_bool();
@@ -158,11 +169,17 @@ pub async fn create_post(
         return Err(AppError::BadRequest("Nội dung không được để trống".into()));
     }
     if body.len() > MAX_BODY {
-        return Err(AppError::BadRequest(format!("Nội dung tối đa {} ký tự", MAX_BODY)));
+        return Err(AppError::BadRequest(format!(
+            "Nội dung tối đa {} ký tự",
+            MAX_BODY
+        )));
     }
     let title = form.title.trim();
     if title.len() > MAX_TITLE {
-        return Err(AppError::BadRequest(format!("Tiêu đề tối đa {} ký tự", MAX_TITLE)));
+        return Err(AppError::BadRequest(format!(
+            "Tiêu đề tối đa {} ký tự",
+            MAX_TITLE
+        )));
     }
     let category = match form.category.as_str() {
         "bug" | "feature" | "comment" => form.category,
@@ -227,7 +244,8 @@ async fn detail_impl(
     .fetch_optional(&state.db)
     .await?
     .ok_or(AppError::NotFound)?;
-    let (post_id, owner_id, category, title, body, status, created_at, _updated, author_email) = row;
+    let (post_id, owner_id, category, title, body, status, created_at, _updated, author_email) =
+        row;
 
     // Visibility: owner or admin
     if owner_id != viewer.id && !viewer.is_admin_bool() {
@@ -257,7 +275,6 @@ async fn detail_impl(
         id: post_id,
         author_email: author_email.clone(),
         category_label: category_label(&category).to_string(),
-        category,
         title: title.unwrap_or_default(),
         body,
         status_label: status_label(&status).to_string(),
@@ -315,7 +332,10 @@ async fn reply_impl(
         return Err(AppError::BadRequest("Phản hồi không được để trống".into()));
     }
     if body.len() > MAX_BODY {
-        return Err(AppError::BadRequest(format!("Phản hồi tối đa {} ký tự", MAX_BODY)));
+        return Err(AppError::BadRequest(format!(
+            "Phản hồi tối đa {} ký tự",
+            MAX_BODY
+        )));
     }
 
     // Verify post exists; non-admin can only reply on own post
@@ -324,7 +344,9 @@ async fn reply_impl(
             .bind(post_id)
             .fetch_optional(&state.db)
             .await?;
-    let Some(owner_id) = owner_id else { return Err(AppError::NotFound) };
+    let Some(owner_id) = owner_id else {
+        return Err(AppError::NotFound);
+    };
     if !as_admin && owner_id != user.id {
         return Err(AppError::Forbidden);
     }
@@ -392,7 +414,19 @@ pub async fn admin_list(
         ),
     };
 
-    let mut q = sqlx::query_as::<_, (String, String, String, Option<String>, String, String, String, i64)>(sql);
+    let mut q = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            String,
+            Option<String>,
+            String,
+            String,
+            String,
+            i64,
+        ),
+    >(sql);
     if let Some(s) = &bind_status {
         q = q.bind(s);
     }
@@ -400,18 +434,19 @@ pub async fn admin_list(
 
     let posts = rows
         .into_iter()
-        .map(|(id, category, status, title, body, created_at, email, reply_count)| PostRow {
-            id,
-            author_email: email,
-            category_label: category_label(&category).to_string(),
-            category,
-            title: title.unwrap_or_default(),
-            body: truncate(&body, 240),
-            status_label: status_label(&status).to_string(),
-            status,
-            created_at,
-            reply_count,
-        })
+        .map(
+            |(id, category, status, title, body, created_at, email, reply_count)| PostRow {
+                id,
+                author_email: email,
+                category_label: category_label(&category).to_string(),
+                title: title.unwrap_or_default(),
+                body: truncate(&body, 240),
+                status_label: status_label(&status).to_string(),
+                status,
+                created_at,
+                reply_count,
+            },
+        )
         .collect();
 
     Ok(AdminFeedbackTemplate {

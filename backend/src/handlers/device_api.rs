@@ -46,7 +46,10 @@ pub async fn upsert_session(
             .bind(&s.id)
             .execute(&state.db)
             .await?;
-        return Ok(Json(SessionResp { id: s.id, client_session_id: body.client_session_id }));
+        return Ok(Json(SessionResp {
+            id: s.id,
+            client_session_id: body.client_session_id,
+        }));
     }
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -64,7 +67,10 @@ pub async fn upsert_session(
     .execute(&state.db)
     .await?;
 
-    Ok(Json(SessionResp { id, client_session_id: body.client_session_id }))
+    Ok(Json(SessionResp {
+        id,
+        client_session_id: body.client_session_id,
+    }))
 }
 
 #[derive(Deserialize)]
@@ -205,20 +211,37 @@ pub async fn upload_screenshot(
     let mut image_bytes: Option<Vec<u8>> = None;
     let mut mime = "image/jpeg".to_string();
 
-    while let Some(field) = multipart.next_field().await.map_err(|e| AppError::BadRequest(e.to_string()))? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::BadRequest(e.to_string()))?
+    {
         let name = field.name().unwrap_or("").to_string();
         match name.as_str() {
             "session_id" => {
-                session_id = Some(field.text().await.map_err(|e| AppError::BadRequest(e.to_string()))?);
+                session_id = Some(
+                    field
+                        .text()
+                        .await
+                        .map_err(|e| AppError::BadRequest(e.to_string()))?,
+                );
             }
             "captured_at" => {
-                captured_at = Some(field.text().await.map_err(|e| AppError::BadRequest(e.to_string()))?);
+                captured_at = Some(
+                    field
+                        .text()
+                        .await
+                        .map_err(|e| AppError::BadRequest(e.to_string()))?,
+                );
             }
             "image" => {
                 if let Some(ct) = field.content_type() {
                     mime = ct.to_string();
                 }
-                let bytes = field.bytes().await.map_err(|e| AppError::BadRequest(e.to_string()))?;
+                let bytes = field
+                    .bytes()
+                    .await
+                    .map_err(|e| AppError::BadRequest(e.to_string()))?;
                 if bytes.len() > state.config.max_screenshot_bytes {
                     return Err(AppError::BadRequest("image too large".into()));
                 }
@@ -228,9 +251,15 @@ pub async fn upload_screenshot(
         }
     }
 
-    let Some(session_id) = session_id else { return Err(AppError::BadRequest("session_id required".into())) };
-    let Some(captured_at) = captured_at else { return Err(AppError::BadRequest("captured_at required".into())) };
-    let Some(image) = image_bytes else { return Err(AppError::BadRequest("image required".into())) };
+    let Some(session_id) = session_id else {
+        return Err(AppError::BadRequest("session_id required".into()));
+    };
+    let Some(captured_at) = captured_at else {
+        return Err(AppError::BadRequest("captured_at required".into()));
+    };
+    let Some(image) = image_bytes else {
+        return Err(AppError::BadRequest("image required".into()));
+    };
 
     let sess = sqlx::query_as::<_, crate::models::Session>(
         "SELECT * FROM sessions WHERE id = ? AND user_id = ?",
@@ -251,11 +280,19 @@ pub async fn upload_screenshot(
     };
 
     let date_dir = chrono::Utc::now().format("%Y/%m/%d").to_string();
-    let dir: PathBuf = state.config.screenshot_dir.join(&auth.user.id).join(&date_dir);
-    tokio::fs::create_dir_all(&dir).await.map_err(|e| AppError::Internal(e.to_string()))?;
+    let dir: PathBuf = state
+        .config
+        .screenshot_dir
+        .join(&auth.user.id)
+        .join(&date_dir);
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
     let filename = format!("{}.{}", id, ext);
     let full_path = dir.join(&filename);
-    tokio::fs::write(&full_path, &image).await.map_err(|e| AppError::Internal(e.to_string()))?;
+    tokio::fs::write(&full_path, &image)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     let rel_path = full_path
         .strip_prefix(&state.config.screenshot_dir)

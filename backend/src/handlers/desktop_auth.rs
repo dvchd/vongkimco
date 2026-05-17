@@ -42,10 +42,12 @@ pub struct StartResp {
 fn generate_user_code() -> String {
     const ALPHABET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no confusing chars
     let mut rng = rand::thread_rng();
-    let raw: String = (0..8).map(|_| {
-        let idx = rng.gen_range(0..ALPHABET.len());
-        ALPHABET[idx] as char
-    }).collect();
+    let raw: String = (0..8)
+        .map(|_| {
+            let idx = rng.gen_range(0..ALPHABET.len());
+            ALPHABET[idx] as char
+        })
+        .collect();
     format!("{}-{}", &raw[..4], &raw[4..])
 }
 
@@ -93,7 +95,17 @@ pub async fn device_link_poll(
     State(state): State<Arc<AppState>>,
     Json(body): Json<PollReq>,
 ) -> AppResult<Json<Value>> {
-    let row = sqlx::query_as::<_, (String, Option<String>, Option<String>, String, Option<String>, Option<String>)>(
+    let row = sqlx::query_as::<
+        _,
+        (
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
         "SELECT user_code, user_id, issued_token_id, expires_at, device_name, platform
          FROM device_links WHERE device_code = ?",
     )
@@ -101,7 +113,8 @@ pub async fn device_link_poll(
     .fetch_optional(&state.db)
     .await?;
 
-    let Some((_user_code, user_id, issued_token_id, expires_at, device_name, platform)) = row else {
+    let Some((_user_code, user_id, issued_token_id, expires_at, device_name, platform)) = row
+    else {
         return Err(AppError::NotFound);
     };
 
@@ -212,7 +225,8 @@ pub async fn device_activate_submit(
             code: form.code,
             user_email: user.email,
             error: Some(
-                "Tài khoản của bạn chưa được duyệt làm thành viên. Vui lòng liên hệ quản trị viên.".into(),
+                "Tài khoản của bạn chưa được duyệt làm thành viên. Vui lòng liên hệ quản trị viên."
+                    .into(),
             ),
         };
         return Ok(tmpl.into_response());
@@ -237,7 +251,9 @@ pub async fn device_activate_submit(
         return Ok(tmpl.into_response());
     }
 
-    let tmpl = crate::handlers::admin::ActivateDoneTemplate { user_email: user.email };
+    let tmpl = crate::handlers::admin::ActivateDoneTemplate {
+        user_email: user.email,
+    };
     Ok(tmpl.into_response())
 }
 

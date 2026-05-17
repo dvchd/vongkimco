@@ -7,6 +7,7 @@ use serde_json::json;
 pub enum AppError {
     #[error("not found")]
     NotFound,
+    #[allow(dead_code)]
     #[error("unauthorized")]
     Unauthorized,
     #[error("forbidden")]
@@ -47,7 +48,10 @@ impl IntoResponse for AppError {
             AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             AppError::Internal(_) => {
                 tracing::error!("internal error: {}", self);
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_string(),
+                )
             }
         };
         (status, Json(json!({ "error": msg }))).into_response()

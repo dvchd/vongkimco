@@ -26,9 +26,7 @@ impl FromRequestParts<Arc<AppState>> for CurrentUser {
     ) -> Result<Self, Self::Rejection> {
         let session = tower_sessions::Session::from_request_parts(parts, state)
             .await
-            .map_err(|_| {
-                Redirect::to("/admin/login").into_response()
-            })?;
+            .map_err(|_| Redirect::to("/admin/login").into_response())?;
 
         let uid: Option<String> = session.get(SESSION_USER_KEY).await.ok().flatten();
         let Some(uid) = uid else {
@@ -72,9 +70,11 @@ impl FromRequestParts<Arc<AppState>> for AdminUser {
 
 /// Extractor for an authenticated user who is at least a member (admins
 /// included). Non-members are redirected to /pending.
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct MemberUser(pub User);
 
+#[allow(dead_code)]
 #[axum::async_trait]
 impl FromRequestParts<Arc<AppState>> for MemberUser {
     type Rejection = Response;
@@ -152,7 +152,10 @@ impl FromRequestParts<Arc<AppState>> for DeviceAuth {
             .execute(&state.db)
             .await;
 
-        Ok(DeviceAuth { user, device_id: dt.id })
+        Ok(DeviceAuth {
+            user,
+            device_id: dt.id,
+        })
     }
 }
 
@@ -177,15 +180,20 @@ pub async fn ensure_user_from_google(
     picture: Option<&str>,
 ) -> Result<User, AppError> {
     let lc_email = email.to_lowercase();
-    let is_admin = if state.config.is_admin_email(&lc_email) { 1 } else { 0 };
+    let is_admin = if state.config.is_admin_email(&lc_email) {
+        1
+    } else {
+        0
+    };
     let is_member = compute_is_member(state, &lc_email).await? as i64;
 
     // Try existing user
-    if let Some(u) = sqlx::query_as::<_, User>("SELECT * FROM users WHERE google_sub = ? OR email = ?")
-        .bind(google_sub)
-        .bind(&lc_email)
-        .fetch_optional(&state.db)
-        .await?
+    if let Some(u) =
+        sqlx::query_as::<_, User>("SELECT * FROM users WHERE google_sub = ? OR email = ?")
+            .bind(google_sub)
+            .bind(&lc_email)
+            .fetch_optional(&state.db)
+            .await?
     {
         sqlx::query(
             "UPDATE users SET email = ?, name = ?, picture = ?, google_sub = ?, is_admin = ?, is_member = ?, updated_at = datetime('now') WHERE id = ?",
@@ -275,4 +283,3 @@ pub async fn current_user_opt(
         .ok()
         .flatten()
 }
-

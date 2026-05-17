@@ -26,7 +26,10 @@ pub struct CallbackQuery {
 }
 
 fn admin_redirect_uri(state: &AppState) -> String {
-    format!("{}/admin/oauth/callback", state.config.public_url.trim_end_matches('/'))
+    format!(
+        "{}/admin/oauth/callback",
+        state.config.public_url.trim_end_matches('/')
+    )
 }
 
 pub async fn admin_login_start(

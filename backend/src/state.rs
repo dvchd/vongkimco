@@ -10,6 +10,7 @@ pub struct Config {
     pub public_url: String,
     pub google_client_id: String,
     pub google_client_secret: String,
+    #[allow(dead_code)]
     pub session_secret: String,
     pub admin_emails: Vec<String>,
     pub member_emails: Vec<String>,
@@ -21,7 +22,9 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> anyhow::Result<Self> {
-        let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string()).parse()?;
+        let port = env::var("PORT")
+            .unwrap_or_else(|_| "8080".to_string())
+            .parse()?;
         let database_url = env::var("DATABASE_URL")
             .unwrap_or_else(|_| "sqlite://./data/vongkimco.db?mode=rwc".to_string());
         let public_url = env::var("PUBLIC_URL")
@@ -42,8 +45,8 @@ impl Config {
             .map(|s| s.trim().to_lowercase())
             .filter(|s| !s.is_empty())
             .collect();
-        let maintainer_facebook =
-            env::var("MAINTAINER_FACEBOOK").unwrap_or_else(|_| "https://fb.com/dvcuong.hust".to_string());
+        let maintainer_facebook = env::var("MAINTAINER_FACEBOOK")
+            .unwrap_or_else(|_| "https://fb.com/dvcuong.hust".to_string());
         let maintainer_email =
             env::var("MAINTAINER_EMAIL").unwrap_or_else(|_| "dvcuong.hust@gmail.com".to_string());
         let screenshot_dir = PathBuf::from(
