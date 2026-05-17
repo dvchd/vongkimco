@@ -15,7 +15,8 @@ COPY src ./src
 COPY migrations ./migrations
 COPY templates ./templates
 COPY static ./static
-RUN cargo build --release --bin vongkimco-backend
+# Force Cargo to relink against real source (not stub)
+RUN touch src/main.rs && cargo build --release --bin vongkimco-backend
 
 FROM debian:bookworm-slim AS runtime
 ENV TZ=Asia/Ho_Chi_Minh
