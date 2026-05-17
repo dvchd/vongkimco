@@ -6,7 +6,7 @@ use axum::routing::{get, post};
 use axum::Router;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
-use tower_sessions::{cookie::Key, ExpiredDeletion, Expiry, SessionManagerLayer};
+use tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::SqliteStore;
 
 use crate::handlers::{admin, desktop_auth, device_api, feedback, health, membership, oauth};
@@ -16,13 +16,11 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
     let session_store = SqliteStore::new(state.db.clone());
     session_store.migrate().await?;
 
-    let key_bytes = derive_key(&state.config.session_secret);
-    let session_layer = SessionManagerLayer::new(session_store)
+    let session_layer = SessionManagerLayer::new(session_store.clone())
         .with_name("vkc_sid")
         .with_secure(state.config.public_url.starts_with("https://"))
         .with_same_site(tower_sessions::cookie::SameSite::Lax)
-        .with_expiry(Expiry::OnInactivity(time::Duration::days(30)))
-        .with_signed(Key::from(&key_bytes));
+        .with_expiry(Expiry::OnInactivity(time::Duration::days(30)));
 
     // Sweep expired sessions in background
     {
@@ -100,12 +98,3 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
     Ok(root)
 }
 
-fn derive_key(secret: &str) -> [u8; 64] {
-    use sha2::{Digest, Sha512};
-    let mut h = Sha512::new();
-    h.update(secret.as_bytes());
-    let out = h.finalize();
-    let mut k = [0u8; 64];
-    k.copy_from_slice(&out);
-    k
-}

@@ -4,7 +4,7 @@
     import { open as openUrl } from "@tauri-apps/plugin-shell";
     import { loadUser, settings } from "../lib/stores";
 
-    const dispatch = createEventDispatcher();
+    const dispatch = createEventDispatcher<{ done: void; "change-server": void }>();
 
     let starting = false;
     let userCode: string | null = null;
@@ -63,7 +63,10 @@
     <main class="main" style="grid-column: 1 / -1; max-width: 520px; margin: 0 auto; padding-top: 48px;">
         <h1>Đăng nhập</h1>
         <p class="muted">Đăng nhập bằng tài khoản Google đã được quản trị viên cấp quyền.</p>
-        <p class="muted small">Server: {$settings?.server_url}</p>
+        <p class="muted small">
+            Server: {$settings?.server_url}
+            <button class="link-btn" on:click={() => dispatch("change-server")}>Đổi</button>
+        </p>
 
         <div class="card">
             {#if !userCode}
@@ -85,3 +88,16 @@
         </div>
     </main>
 </div>
+
+<style>
+.link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 4px;
+    color: var(--primary, #f5c518);
+    cursor: pointer;
+    font-size: inherit;
+    text-decoration: underline;
+}
+</style>

@@ -49,7 +49,6 @@
         }
     },
     "plugins": {
-        "global-shortcut": {},
         "shell": {
             "open": true
         },
@@ -59,7 +58,7 @@
                 "https://github.com/dvchd/vongkimco/releases/latest/download/latest.json"
             ],
             "dialog": false,
-            "pubkey": "REPLACE_WITH_TAURI_SIGNING_PUBLIC_KEY"
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFDRkZGMkJDQzg5NkY4NzcKUldSMytKYkl2UEwvckRzT3VGOUJ5RDhTMURBM1VnV1Ruc1djMUcvdExJZ1F6UlBzR3JmbUtkODIK"
         }
     }
 }

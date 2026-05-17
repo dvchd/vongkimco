@@ -42,7 +42,7 @@ fn status_label(s: &str) -> &'static str {
         "pending" => "Đang chờ duyệt",
         "approved" => "Đã được duyệt",
         "rejected" => "Đã bị từ chối",
-        _ => s,
+        _ => "Không rõ",
     }
 }
 
@@ -83,9 +83,10 @@ async fn pending_page_with_flash(
     }
     let existing = fetch_request(state, &u.id).await?;
 
+    let is_member = u.is_member_bool();
     Ok(PendingTemplate {
         user_email: u.email,
-        is_member: u.is_member_bool(),
+        is_member,
         maintainer_facebook: state.config.maintainer_facebook.clone(),
         maintainer_email: state.config.maintainer_email.clone(),
         existing,

@@ -84,7 +84,7 @@ fn status_label(s: &str) -> &'static str {
         "in_progress" => "Đang xử lý",
         "resolved" => "Đã giải quyết",
         "wontfix" => "Không xử lý",
-        _ => s,
+        _ => "Không rõ",
     }
 }
 
@@ -128,10 +128,12 @@ pub async fn member_list(
         })
         .collect();
 
+    let is_admin = u.is_admin_bool();
+    let is_member = u.is_member_bool();
     Ok(FeedbackListTemplate {
         user_email: u.email,
-        is_admin: u.is_admin_bool(),
-        is_member: u.is_member_bool(),
+        is_admin,
+        is_member,
         posts,
         maintainer_facebook: state.config.maintainer_facebook.clone(),
         maintainer_email: state.config.maintainer_email.clone(),

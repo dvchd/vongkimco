@@ -4,11 +4,11 @@
 <h1>Phản hồi từ thành viên</h1>
 
 <div class="row" style="gap: 8px; margin-bottom: 12px;">
-    <a href="/admin/feedback" class="btn-ghost {% if status_filter == 'all' %}active{% endif %}">Tất cả</a>
-    <a href="/admin/feedback?status=open" class="btn-ghost {% if status_filter == 'open' %}active{% endif %}">Đang mở</a>
-    <a href="/admin/feedback?status=in_progress" class="btn-ghost {% if status_filter == 'in_progress' %}active{% endif %}">Đang xử lý</a>
-    <a href="/admin/feedback?status=resolved" class="btn-ghost {% if status_filter == 'resolved' %}active{% endif %}">Đã giải quyết</a>
-    <a href="/admin/feedback?status=wontfix" class="btn-ghost {% if status_filter == 'wontfix' %}active{% endif %}">Không xử lý</a>
+    <a href="/admin/feedback" class="btn-ghost {% if status_filter == "all" %}active{% endif %}">Tất cả</a>
+    <a href="/admin/feedback?status=open" class="btn-ghost {% if status_filter == "open" %}active{% endif %}">Đang mở</a>
+    <a href="/admin/feedback?status=in_progress" class="btn-ghost {% if status_filter == "in_progress" %}active{% endif %}">Đang xử lý</a>
+    <a href="/admin/feedback?status=resolved" class="btn-ghost {% if status_filter == "resolved" %}active{% endif %}">Đã giải quyết</a>
+    <a href="/admin/feedback?status=wontfix" class="btn-ghost {% if status_filter == "wontfix" %}active{% endif %}">Không xử lý</a>
 </div>
 
 {% if posts.is_empty() %}

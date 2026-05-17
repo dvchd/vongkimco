@@ -53,7 +53,7 @@
 {:else if $route === "server"}
     <ServerSelect on:done={() => go($user ? "home" : "login")} />
 {:else if $route === "login"}
-    <Login on:done={() => go("home")} />
+    <Login on:done={() => go("home")} on:change-server={() => go("server")} />
 {:else}
     <div class="layout">
         <aside class="sidebar">
