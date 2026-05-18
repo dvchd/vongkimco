@@ -17,6 +17,39 @@ use crate::state::{emit_status, AppState};
 
 const SYNC_INTERVAL: Duration = Duration::from_secs(20);
 
+/// One pending session row: (local_id, started_at, ended_at, note, remote_id).
+type SessionRow = (
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+);
+
+/// One activity sample queued for upload, keyed by remote session id.
+/// Fields after `local_id`: (sampled_at, idle_seconds, keyboard_events, mouse_events).
+type ActivityItem = (String, String, i64, i64, i64);
+
+/// One app-snapshot row pulled from the local DB:
+/// (local_id, remote_session_id, sampled_at, foreground_app, foreground_title, apps_json).
+type AppSnapshotRow = (
+    String,
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    String,
+);
+
+/// One app-snapshot grouped for upload: (local_id, sampled_at, foreground_app, foreground_title, parsed apps).
+type AppSnapshotItem = (
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    serde_json::Value,
+);
+
 pub async fn start_sync_loop(state: AppState) {
     tokio::spawn(async move {
         loop {
@@ -51,13 +84,25 @@ pub fn update_pending_counts(state: &AppState) {
         .db
         .with(|c| {
             let a: i64 = c
-                .query_row("SELECT COUNT(*) FROM activity_samples WHERE synced = 0", [], |r| r.get(0))
+                .query_row(
+                    "SELECT COUNT(*) FROM activity_samples WHERE synced = 0",
+                    [],
+                    |r| r.get(0),
+                )
                 .unwrap_or(0);
             let b: i64 = c
-                .query_row("SELECT COUNT(*) FROM app_snapshots WHERE synced = 0", [], |r| r.get(0))
+                .query_row(
+                    "SELECT COUNT(*) FROM app_snapshots WHERE synced = 0",
+                    [],
+                    |r| r.get(0),
+                )
                 .unwrap_or(0);
             let s: i64 = c
-                .query_row("SELECT COUNT(*) FROM screenshots WHERE synced = 0", [], |r| r.get(0))
+                .query_row(
+                    "SELECT COUNT(*) FROM screenshots WHERE synced = 0",
+                    [],
+                    |r| r.get(0),
+                )
                 .unwrap_or(0);
             Ok(a + b + s)
         })
@@ -78,26 +123,24 @@ pub async fn sync_once(state: &AppState, server: &str, token: &str) -> Result<()
 }
 
 async fn push_sessions(state: &AppState, server: &str, token: &str) -> Result<()> {
-    let rows: Vec<(String, String, Option<String>, Option<String>, Option<String>)> = state
-        .db
-        .with(|c| {
-            let mut stmt = c.prepare(
-                "SELECT id, started_at, ended_at, note, remote_id
+    let rows: Vec<SessionRow> = state.db.with(|c| {
+        let mut stmt = c.prepare(
+            "SELECT id, started_at, ended_at, note, remote_id
                  FROM sessions WHERE synced = 0",
-            )?;
-            let out = stmt
-                .query_map([], |r| {
-                    Ok((
-                        r.get::<_, String>(0)?,
-                        r.get::<_, String>(1)?,
-                        r.get::<_, Option<String>>(2)?,
-                        r.get::<_, Option<String>>(3)?,
-                        r.get::<_, Option<String>>(4)?,
-                    ))
-                })?
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok(out)
-        })?;
+        )?;
+        let out = stmt
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, Option<String>>(2)?,
+                    r.get::<_, Option<String>>(3)?,
+                    r.get::<_, Option<String>>(4)?,
+                ))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(out)
+    })?;
 
     let client = reqwest::Client::new();
     for (local_id, started_at, ended_at, note, _remote_id) in rows {
@@ -118,7 +161,10 @@ async fn push_sessions(state: &AppState, server: &str, token: &str) -> Result<()
             return Err(anyhow!("session sync HTTP {}", resp.status()));
         }
         let resp_json: serde_json::Value = resp.json().await?;
-        let remote_id = resp_json.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let remote_id = resp_json
+            .get("id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
 
         state.db.with(|c| {
             c.execute(
@@ -153,14 +199,19 @@ async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> R
             })?.collect::<Result<Vec<_>, _>>()?;
             Ok(out)
         })?;
-        if rows.is_empty() { break }
+        if rows.is_empty() {
+            break;
+        }
 
         // Group by remote session id
-        let mut groups: std::collections::HashMap<String, Vec<(String, String, i64, i64, i64)>> = Default::default();
+        let mut groups: std::collections::HashMap<String, Vec<ActivityItem>> = Default::default();
         let mut local_ids: Vec<String> = Vec::with_capacity(rows.len());
         for (id, _local_sid, remote_sid, sampled_at, idle, kb, mo) in rows {
             local_ids.push(id.clone());
-            groups.entry(remote_sid).or_default().push((id, sampled_at, idle, kb, mo));
+            groups
+                .entry(remote_sid)
+                .or_default()
+                .push((id, sampled_at, idle, kb, mo));
         }
 
         let client = reqwest::Client::new();
@@ -168,13 +219,15 @@ async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> R
         for (remote_sid, items) in groups {
             let samples: Vec<serde_json::Value> = items
                 .iter()
-                .map(|(_, sampled_at, idle, kb, mo)| json!({
-                    "sampled_at": sampled_at,
-                    "state": if *idle >= 120 { "idle" } else { "active" },
-                    "idle_seconds": idle,
-                    "keyboard_events": kb,
-                    "mouse_events": mo,
-                }))
+                .map(|(_, sampled_at, idle, kb, mo)| {
+                    json!({
+                        "sampled_at": sampled_at,
+                        "state": if *idle >= 120 { "idle" } else { "active" },
+                        "idle_seconds": idle,
+                        "keyboard_events": kb,
+                        "mouse_events": mo,
+                    })
+                })
                 .collect();
             let body = json!({ "session_id": remote_sid, "samples": samples });
             let resp = client
@@ -194,7 +247,10 @@ async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> R
 
         state.db.with(|c| {
             for id in &acknowledged {
-                c.execute("UPDATE activity_samples SET synced = 1 WHERE id = ?", params![id])?;
+                c.execute(
+                    "UPDATE activity_samples SET synced = 1 WHERE id = ?",
+                    params![id],
+                )?;
             }
             Ok(())
         })?;
@@ -204,7 +260,7 @@ async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> R
 
 async fn push_app_snapshots(state: &AppState, server: &str, token: &str) -> Result<()> {
     loop {
-        let rows: Vec<(String, String, String, Option<String>, Option<String>, String)> = state.db.with(|c| {
+        let rows: Vec<AppSnapshotRow> = state.db.with(|c| {
             let mut stmt = c.prepare(
                 "SELECT a.id, s.remote_id, a.sampled_at, a.foreground_app, a.foreground_title, a.apps_json
                  FROM app_snapshots a JOIN sessions s ON s.id = a.session_id
@@ -223,26 +279,40 @@ async fn push_app_snapshots(state: &AppState, server: &str, token: &str) -> Resu
             })?.collect::<Result<Vec<_>, _>>()?;
             Ok(out)
         })?;
-        if rows.is_empty() { break }
+        if rows.is_empty() {
+            break;
+        }
 
-        let mut groups: std::collections::HashMap<String, Vec<(String, String, Option<String>, Option<String>, serde_json::Value)>> = Default::default();
+        let mut groups: std::collections::HashMap<String, Vec<AppSnapshotItem>> =
+            Default::default();
         for (id, remote_sid, sampled_at, fg_app, fg_title, apps_json) in rows {
             let apps: serde_json::Value = serde_json::from_str(&apps_json).unwrap_or(json!([]));
-            groups.entry(remote_sid).or_default().push((id, sampled_at, fg_app, fg_title, apps));
+            groups
+                .entry(remote_sid)
+                .or_default()
+                .push((id, sampled_at, fg_app, fg_title, apps));
         }
 
         let client = reqwest::Client::new();
         let mut acked: Vec<String> = Vec::new();
         for (remote_sid, items) in groups {
-            let snapshots: Vec<serde_json::Value> = items.iter().map(|(_, sampled_at, fg, ftitle, apps)| json!({
-                "sampled_at": sampled_at,
-                "foreground_app": fg,
-                "foreground_title": ftitle,
-                "apps": apps,
-            })).collect();
+            let snapshots: Vec<serde_json::Value> = items
+                .iter()
+                .map(|(_, sampled_at, fg, ftitle, apps)| {
+                    json!({
+                        "sampled_at": sampled_at,
+                        "foreground_app": fg,
+                        "foreground_title": ftitle,
+                        "apps": apps,
+                    })
+                })
+                .collect();
             let body = json!({ "session_id": remote_sid, "snapshots": snapshots });
             let resp = client
-                .post(format!("{}/api/v1/app-snapshots", server.trim_end_matches('/')))
+                .post(format!(
+                    "{}/api/v1/app-snapshots",
+                    server.trim_end_matches('/')
+                ))
                 .bearer_auth(token)
                 .json(&body)
                 .send()
@@ -258,7 +328,10 @@ async fn push_app_snapshots(state: &AppState, server: &str, token: &str) -> Resu
 
         state.db.with(|c| {
             for id in &acked {
-                c.execute("UPDATE app_snapshots SET synced = 1 WHERE id = ?", params![id])?;
+                c.execute(
+                    "UPDATE app_snapshots SET synced = 1 WHERE id = ?",
+                    params![id],
+                )?;
             }
             Ok(())
         })?;
@@ -272,16 +345,18 @@ async fn push_screenshots(state: &AppState, server: &str, token: &str) -> Result
             "SELECT sh.id, s.remote_id, sh.captured_at, sh.file_path
              FROM screenshots sh JOIN sessions s ON s.id = sh.session_id
              WHERE sh.synced = 0 AND s.remote_id IS NOT NULL
-             ORDER BY sh.captured_at LIMIT 20"
+             ORDER BY sh.captured_at LIMIT 20",
         )?;
-        let out = stmt.query_map([], |r| {
-            Ok((
-                r.get::<_, String>(0)?,
-                r.get::<_, String>(1)?,
-                r.get::<_, String>(2)?,
-                r.get::<_, String>(3)?,
-            ))
-        })?.collect::<Result<Vec<_>, _>>()?;
+        let out = stmt
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                ))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(out)
     })?;
 
@@ -293,7 +368,10 @@ async fn push_screenshots(state: &AppState, server: &str, token: &str) -> Result
             Err(e) => {
                 log::warn!("missing screenshot file {file_path}: {e}");
                 state.db.with(|c| {
-                    c.execute("UPDATE screenshots SET synced = 1 WHERE id = ?", params![id])?;
+                    c.execute(
+                        "UPDATE screenshots SET synced = 1 WHERE id = ?",
+                        params![id],
+                    )?;
                     Ok(())
                 })?;
                 continue;
@@ -301,14 +379,19 @@ async fn push_screenshots(state: &AppState, server: &str, token: &str) -> Result
         };
 
         let filename = format!("{}.jpg", id);
-        let part = Part::bytes(bytes).file_name(filename).mime_str("image/jpeg")?;
+        let part = Part::bytes(bytes)
+            .file_name(filename)
+            .mime_str("image/jpeg")?;
         let form = Form::new()
             .text("session_id", remote_sid)
             .text("captured_at", captured_at.clone())
             .part("image", part);
 
         let resp = client
-            .post(format!("{}/api/v1/screenshots", server.trim_end_matches('/')))
+            .post(format!(
+                "{}/api/v1/screenshots",
+                server.trim_end_matches('/')
+            ))
             .bearer_auth(token)
             .multipart(form)
             .send()
@@ -319,7 +402,10 @@ async fn push_screenshots(state: &AppState, server: &str, token: &str) -> Result
         }
 
         state.db.with(|c| {
-            c.execute("UPDATE screenshots SET synced = 1 WHERE id = ?", params![id])?;
+            c.execute(
+                "UPDATE screenshots SET synced = 1 WHERE id = ?",
+                params![id],
+            )?;
             Ok(())
         })?;
 

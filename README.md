@@ -23,12 +23,16 @@ Triển khai chính thức: **https://vongkimco.hoctuthien.com**
   `https://vongkimco.hoctuthien.com`, có thể custom domain).
 - **Đăng nhập bằng Google** qua "device link" flow — mở browser, đăng nhập, paste mã.
 - **Bắt đầu / dừng phiên** bằng nút hoặc phím tắt toàn cục (cấu hình được).
-- **Chụp ảnh màn hình định kỳ**, nén JPEG ~50% chất lượng + resize ≤ 1280px để
-  vừa đủ thấy đang làm gì mà không tốn băng thông.
-- **Theo dõi Idle / Active** bằng cách phát hiện hoạt động bàn phím + chuột.
-- **Snapshot ứng dụng đang chạy** + cửa sổ foreground.
-- **Hoạt động offline**: tất cả dữ liệu được lưu vào SQLite cục bộ, có mạng
-  sẽ tự đồng bộ lên server.
+- **Chụp ảnh màn hình định kỳ** (mặc định 180s), nén JPEG ~50% chất lượng +
+  resize ≤ 1280px để vừa đủ thấy đang làm gì mà không tốn băng thông.
+- **Theo dõi Idle / Active** bằng cách phát hiện hoạt động bàn phím + chuột
+  (mẫu mỗi 30s, ngưỡng idle mặc định 120s).
+- **Snapshot ứng dụng đang chạy** + cửa sổ foreground (mặc định 60s).
+- **Hoạt động offline**: tất cả dữ liệu được lưu vào SQLite cục bộ; có mạng
+  sẽ tự đồng bộ lên server (vòng đồng bộ 20s, có nút "Đồng bộ ngay").
+- **Tự khởi động cùng hệ thống** (tuỳ chọn, dùng plugin autostart của Tauri).
+- **Tự cập nhật** an toàn qua Tauri Updater + chữ ký Ed25519 (xem mục
+  *Tự động cập nhật* bên dưới).
 
 ### Admin web (chung server)
 - Đăng nhập Google. Chỉ email trong allow-list (env `ADMIN_EMAILS`) mới vào được.
@@ -221,41 +225,88 @@ GitHub Release.
 
 ---
 
+## 🧪 Phát triển local & kiểm tra chất lượng
+
+CI (`backend-ci.yml`) chạy `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+và `cargo build --release` cho backend; release pipeline cũng yêu cầu desktop
+build sạch. Để chạy y hệt CI tại máy:
+
+```bash
+# Backend
+cd backend
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo build --release
+
+# Desktop (Tauri Rust)
+cd desktop/src-tauri
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+
+# Desktop (Svelte/TypeScript)
+cd desktop
+npm install
+npm run icons:build      # tạo icon (yêu cầu để `tauri build` thấy icon.ico)
+npm run check            # svelte-check (TypeScript + a11y)
+npm run build            # vite production bundle
+```
+
+Toàn bộ codebase hiện tại build & lint sạch warnings — bất kỳ warning nào xuất
+hiện trong PR đều cần được xử lý trước khi merge.
+
+---
+
 ## 🏗️ Kiến trúc thư mục
 
 ```
 vongkimco/
 ├── backend/                   # Rust + Axum + SQLite
 │   ├── src/
-│   │   ├── main.rs
+│   │   ├── main.rs            # bootstrap + tracing + serve
 │   │   ├── routes.rs          # router + session + CORS
-│   │   ├── auth.rs            # Google OAuth + device token
-│   │   ├── handlers/          # admin / oauth / device API / desktop auth
-│   │   ├── models.rs          # sqlx structs
-│   │   └── db.rs              # pool + migrations
-│   ├── templates/             # Askama (admin UI)
-│   ├── migrations/            # SQLite migrations
+│   │   ├── auth.rs            # OAuth helpers + device token + extractors
+│   │   ├── state.rs           # Config (env vars) + AppState
+│   │   ├── error.rs           # AppError → HTTP response mapping
+│   │   ├── models.rs          # sqlx structs (User, Session, …)
+│   │   ├── db.rs              # SQLite pool + migrations
+│   │   └── handlers/
+│   │       ├── admin.rs        # admin dashboard + users + screenshots
+│   │       ├── desktop_auth.rs # device-link flow
+│   │       ├── device_api.rs   # /api/v1/* for desktop client
+│   │       ├── feedback.rs     # /feedback + admin replies
+│   │       ├── health.rs       # /api/v1/health + /api/v1/server-info
+│   │       ├── membership.rs   # /pending + admin approve/reject
+│   │       └── oauth.rs        # Google OAuth login/callback
+│   ├── templates/             # Askama (admin UI + feedback + pending)
+│   ├── migrations/            # SQLite migrations (init, device_link, members_feedback, membership_requests)
 │   ├── static/                # admin.css
 │   └── Dockerfile
 ├── desktop/                   # Tauri 2 + Svelte + Rust
 │   ├── src/                   # Svelte UI
+│   │   ├── App.svelte         # shell + sidebar nav
+│   │   ├── app.css            # design tokens
+│   │   ├── lib/               # stores, updater client, banner
+│   │   └── routes/            # ServerSelect, Login, Home, History, Settings
 │   ├── src-tauri/             # Rust core
 │   │   ├── src/
+│   │   │   ├── main.rs        # thin entry into lib::run()
 │   │   │   ├── lib.rs         # plugin setup + invoke handlers
 │   │   │   ├── commands.rs    # #[tauri::command]
 │   │   │   ├── state.rs       # in-memory state + persistence
-│   │   │   ├── settings.rs
+│   │   │   ├── settings.rs    # Settings struct + defaults
 │   │   │   ├── db.rs          # local SQLite (rusqlite)
-│   │   │   ├── monitor.rs     # idle/active + app list + hotkeys
+│   │   │   ├── monitor.rs     # idle/active + app list + hotkeys + screenshots
 │   │   │   ├── screenshot.rs  # xcap + image (JPEG compression)
 │   │   │   └── sync.rs        # background sync to backend
+│   │   ├── capabilities/      # Tauri 2 permissions
+│   │   ├── icons/             # generated app icons (gitignored)
 │   │   └── tauri.conf.json
-│   └── scripts/               # icon generator
+│   └── scripts/               # icon generator + update-manifest builder
 ├── docker-compose.yml         # Coolify-ready
 ├── .env.example
 └── .github/workflows/
-    ├── backend-ci.yml         # Rust fmt/clippy/build + Docker
-    └── desktop-release.yml    # cross-platform Tauri release
+    ├── backend-ci.yml         # fmt --check, clippy -D warnings, build, Docker
+    └── desktop-release.yml    # cross-platform Tauri release + signed updater manifest
 ```
 
 ---

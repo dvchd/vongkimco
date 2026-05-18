@@ -61,10 +61,10 @@
                 <span class="logo">⚙</span>
                 <span>Vòng Kim Cô</span>
             </div>
-            <a class:active={$route === "home"} on:click={() => go("home")}>Phiên làm việc</a>
-            <a class:active={$route === "history"} on:click={() => go("history")}>Lịch sử</a>
-            <a class:active={$route === "settings"} on:click={() => go("settings")}>Cài đặt</a>
-            <a class:active={$route === "server"} on:click={() => go("server")}>Server</a>
+            <button type="button" class="nav-link" class:active={$route === "home"} on:click={() => go("home")}>Phiên làm việc</button>
+            <button type="button" class="nav-link" class:active={$route === "history"} on:click={() => go("history")}>Lịch sử</button>
+            <button type="button" class="nav-link" class:active={$route === "settings"} on:click={() => go("settings")}>Cài đặt</button>
+            <button type="button" class="nav-link" class:active={$route === "server"} on:click={() => go("server")}>Server</button>
             <div class="footer">
                 {#if $user}
                     <div>{$user.email}</div>

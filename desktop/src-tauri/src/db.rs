@@ -25,8 +25,8 @@ impl LocalDb {
         F: FnOnce(&Connection) -> Result<T>,
     {
         let c = Connection::open(&self.path).context("open sqlite")?;
-        c.pragma_update(None, "journal_mode", &"WAL").ok();
-        c.pragma_update(None, "synchronous", &"NORMAL").ok();
+        c.pragma_update(None, "journal_mode", "WAL").ok();
+        c.pragma_update(None, "synchronous", "NORMAL").ok();
         c.execute_batch("PRAGMA foreign_keys = ON;").ok();
         f(&c)
     }
@@ -88,7 +88,14 @@ impl LocalDb {
                 "INSERT INTO app_snapshots
                  (id, session_id, sampled_at, foreground_app, foreground_title, apps_json, synced)
                  VALUES (?, ?, ?, ?, ?, ?, 0)",
-                params![id, session_id, sampled_at, foreground_app, foreground_title, apps_json],
+                params![
+                    id,
+                    session_id,
+                    sampled_at,
+                    foreground_app,
+                    foreground_title,
+                    apps_json
+                ],
             )?;
             Ok(())
         })

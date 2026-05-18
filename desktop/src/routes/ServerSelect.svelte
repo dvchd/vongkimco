@@ -38,8 +38,10 @@
 
         <div class="card">
             <div class="field">
-                <label>URL server</label>
-                <input type="url" bind:value={url} placeholder="https://vongkimco.hoctuthien.com" />
+                <label>
+                    URL server
+                    <input type="url" bind:value={url} placeholder="https://vongkimco.hoctuthien.com" />
+                </label>
             </div>
 
             <div class="row">

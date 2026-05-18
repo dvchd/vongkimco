@@ -4,14 +4,20 @@ use anyhow::{anyhow, Result};
 use image::{codecs::jpeg::JpegEncoder, ColorType, ImageEncoder};
 
 /// Capture the primary monitor, downscale to a privacy-friendly size, and encode as JPEG.
-pub fn capture_primary_jpeg(out_dir: &std::path::Path, quality: u8, max_width: u32) -> Result<(PathBuf, usize, u32, u32)> {
+pub fn capture_primary_jpeg(
+    out_dir: &std::path::Path,
+    quality: u8,
+    max_width: u32,
+) -> Result<(PathBuf, usize, u32, u32)> {
     let monitors = xcap::Monitor::all().map_err(|e| anyhow!("xcap: {e}"))?;
     let mon = monitors
         .into_iter()
         .next()
         .ok_or_else(|| anyhow!("no monitor found"))?;
 
-    let img = mon.capture_image().map_err(|e| anyhow!("xcap capture: {e}"))?;
+    let img = mon
+        .capture_image()
+        .map_err(|e| anyhow!("xcap capture: {e}"))?;
 
     // img is `image::ImageBuffer<image::Rgba<u8>, Vec<u8>>`
     let (w, h) = (img.width(), img.height());

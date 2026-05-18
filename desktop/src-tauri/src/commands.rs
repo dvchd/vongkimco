@@ -88,7 +88,10 @@ pub async fn device_link_start(state: State<'_, AppState>) -> CmdResult<DeviceLi
     let body = serde_json::json!({ "device_name": hostname, "platform": platform });
     let client = reqwest::Client::new();
     let resp = client
-        .post(format!("{}/api/v1/device/link/start", server.trim_end_matches('/')))
+        .post(format!(
+            "{}/api/v1/device/link/start",
+            server.trim_end_matches('/')
+        ))
         .json(&body)
         .send()
         .await
@@ -107,18 +110,26 @@ pub async fn device_link_start(state: State<'_, AppState>) -> CmdResult<DeviceLi
         verification_url: verification_url.clone(),
     });
 
-    Ok(DeviceLinkStartResp { user_code, verification_url })
+    Ok(DeviceLinkStartResp {
+        user_code,
+        verification_url,
+    })
 }
 
 #[tauri::command]
 pub async fn device_link_poll(state: State<'_, AppState>) -> CmdResult<Value> {
     let server = state.server_url();
     let pending = state.pending_link.read().clone();
-    let Some(p) = pending else { return Err("no pending link".into()) };
+    let Some(p) = pending else {
+        return Err("no pending link".into());
+    };
 
     let client = reqwest::Client::new();
     let resp = client
-        .post(format!("{}/api/v1/device/link/poll", server.trim_end_matches('/')))
+        .post(format!(
+            "{}/api/v1/device/link/poll",
+            server.trim_end_matches('/')
+        ))
         .json(&serde_json::json!({ "device_code": p.device_code }))
         .send()
         .await
@@ -189,7 +200,10 @@ pub async fn do_start_session(state: &AppState, note: Option<String>) -> Result<
 
     // Best-effort notification
     use tauri_plugin_notification::NotificationExt;
-    let _ = state.app.notification().builder()
+    let _ = state
+        .app
+        .notification()
+        .builder()
         .title("Vòng Kim Cô")
         .body("Phiên làm việc đã bắt đầu")
         .show();
@@ -216,7 +230,10 @@ pub async fn do_stop_session(state: &AppState) -> Result<()> {
     emit_status(state);
 
     use tauri_plugin_notification::NotificationExt;
-    let _ = state.app.notification().builder()
+    let _ = state
+        .app
+        .notification()
+        .builder()
         .title("Vòng Kim Cô")
         .body("Phiên làm việc đã kết thúc")
         .show();
@@ -227,14 +244,18 @@ pub async fn do_stop_session(state: &AppState) -> Result<()> {
 pub async fn sync_now(state: State<'_, AppState>) -> CmdResult<()> {
     let token = state.auth_token().ok_or("not logged in".to_string())?;
     let server = state.server_url();
-    crate::sync::sync_once(&state, &server, &token).await.map_err(err)?;
+    crate::sync::sync_once(&state, &server, &token)
+        .await
+        .map_err(err)?;
     crate::sync::update_pending_counts(&state);
     emit_status(&state);
     Ok(())
 }
 
 #[tauri::command]
-pub async fn get_session_state(state: State<'_, AppState>) -> CmdResult<crate::state::SessionState> {
+pub async fn get_session_state(
+    state: State<'_, AppState>,
+) -> CmdResult<crate::state::SessionState> {
     Ok(state.session.read().clone())
 }
 
@@ -244,7 +265,11 @@ pub async fn list_local_sessions(state: State<'_, AppState>) -> CmdResult<Vec<Lo
 }
 
 fn hostname_or_default() -> String {
-    if let Ok(h) = std::env::var("COMPUTERNAME") { return h }
-    if let Ok(h) = std::env::var("HOSTNAME") { return h }
+    if let Ok(h) = std::env::var("COMPUTERNAME") {
+        return h;
+    }
+    if let Ok(h) = std::env::var("HOSTNAME") {
+        return h;
+    }
     "desktop".to_string()
 }

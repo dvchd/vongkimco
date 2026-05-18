@@ -34,9 +34,9 @@ async fn activity_loop(state: AppState) {
         let idle_threshold = state.settings.read().idle_threshold_secs.max(15) as f64;
 
         // Polling tick: every 1s, sample input deltas. Aggregate sample every `sample_interval`s.
-        let start = Instant::now();
         for _ in 0..sample_interval {
-            let keys: HashSet<device_query::Keycode> = device_state.get_keys().into_iter().collect();
+            let keys: HashSet<device_query::Keycode> =
+                device_state.get_keys().into_iter().collect();
             let new_keys = keys.difference(&last_keys).count() as i64;
             counters_kb += new_keys;
 
@@ -56,10 +56,13 @@ async fn activity_loop(state: AppState) {
             last_mouse = mouse;
             sleep(Duration::from_secs(1)).await;
         }
-        let _ = start; // unused warning
 
         let idle_secs = last_activity_ts.elapsed().as_secs_f64();
-        let state_str = if idle_secs >= idle_threshold { "idle" } else { "active" };
+        let state_str = if idle_secs >= idle_threshold {
+            "idle"
+        } else {
+            "active"
+        };
 
         let session_id = state.session.read().session_id.clone();
         if let Some(sid) = session_id {
@@ -134,7 +137,9 @@ async fn screenshot_loop(state: AppState) {
 
         let session_id = state.session.read().session_id.clone();
         let Some(sid) = session_id else { continue };
-        if !enabled { continue }
+        if !enabled {
+            continue;
+        }
 
         let out_dir = state.screenshot_dir.clone();
         let state_clone = state.clone();
@@ -150,7 +155,11 @@ async fn screenshot_loop(state: AppState) {
                     .map(|p| p.to_string_lossy().replace('\\', "/"))
                     .unwrap_or_else(|_| path.to_string_lossy().to_string());
                 let now = chrono::Utc::now().to_rfc3339();
-                if state_clone.db.insert_screenshot(&sid, &now, &rel, bytes).is_ok() {
+                if state_clone
+                    .db
+                    .insert_screenshot(&sid, &now, &rel, bytes)
+                    .is_ok()
+                {
                     let mut s = state_clone.session.write();
                     s.screenshots_taken += 1;
                 }

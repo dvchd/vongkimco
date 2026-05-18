@@ -41,8 +41,10 @@
 <div class="card">
     <h2 style="margin-top: 0;">Server</h2>
     <div class="field">
-        <label>URL server backend</label>
-        <input type="url" bind:value={local.server_url} />
+        <label>
+            URL server backend
+            <input type="url" bind:value={local.server_url} />
+        </label>
     </div>
 </div>
 
@@ -52,32 +54,44 @@
         <label><input type="checkbox" bind:checked={local.capture_screenshots} /> Chụp màn hình định kỳ</label>
     </div>
     <div class="field">
-        <label>Chu kỳ chụp màn hình (giây)</label>
-        <input type="number" min="30" max="3600" bind:value={local.screenshot_interval_secs} />
+        <label>
+            Chu kỳ chụp màn hình (giây)
+            <input type="number" min="30" max="3600" bind:value={local.screenshot_interval_secs} />
+        </label>
     </div>
     <div class="field">
-        <label>Chu kỳ đo activity (giây)</label>
-        <input type="number" min="5" max="300" bind:value={local.activity_sample_interval_secs} />
+        <label>
+            Chu kỳ đo activity (giây)
+            <input type="number" min="5" max="300" bind:value={local.activity_sample_interval_secs} />
+        </label>
     </div>
     <div class="field">
-        <label>Chu kỳ chụp danh sách ứng dụng (giây)</label>
-        <input type="number" min="10" max="600" bind:value={local.app_snapshot_interval_secs} />
+        <label>
+            Chu kỳ chụp danh sách ứng dụng (giây)
+            <input type="number" min="10" max="600" bind:value={local.app_snapshot_interval_secs} />
+        </label>
     </div>
     <div class="field">
-        <label>Ngưỡng idle (giây)</label>
-        <input type="number" min="30" max="1800" bind:value={local.idle_threshold_secs} />
+        <label>
+            Ngưỡng idle (giây)
+            <input type="number" min="30" max="1800" bind:value={local.idle_threshold_secs} />
+        </label>
     </div>
 </div>
 
 <div class="card">
     <h2 style="margin-top: 0;">Phím tắt</h2>
     <div class="field">
-        <label>Bắt đầu phiên</label>
-        <input type="text" bind:value={local.hotkey_start} placeholder="CmdOrCtrl+Alt+S" />
+        <label>
+            Bắt đầu phiên
+            <input type="text" bind:value={local.hotkey_start} placeholder="CmdOrCtrl+Alt+S" />
+        </label>
     </div>
     <div class="field">
-        <label>Kết thúc phiên</label>
-        <input type="text" bind:value={local.hotkey_stop} placeholder="CmdOrCtrl+Alt+E" />
+        <label>
+            Kết thúc phiên
+            <input type="text" bind:value={local.hotkey_stop} placeholder="CmdOrCtrl+Alt+E" />
+        </label>
     </div>
     <p class="muted small">
         Dùng tổ hợp như <code>CmdOrCtrl+Alt+S</code>. Hệ thống global shortcut sẽ áp dụng ngay sau khi lưu.
@@ -94,8 +108,8 @@
 <div class="card">
     <h2 style="margin-top: 0;">Cập nhật ứng dụng</h2>
     <div class="field">
-        <label>Phiên bản hiện tại</label>
-        <div class="muted">v{appVersion || "?"}</div>
+        <div class="muted small">Phiên bản hiện tại</div>
+        <div>v{appVersion || "?"}</div>
     </div>
 
     {#if $updateState.status === "checking"}

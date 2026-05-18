@@ -109,7 +109,9 @@ pub async fn boot(state: &AppState) -> Result<()> {
     // Load persisted settings
     let cfg_path = state.data_dir.join("settings.json");
     if cfg_path.exists() {
-        let txt = tokio::fs::read_to_string(&cfg_path).await.context("read settings")?;
+        let txt = tokio::fs::read_to_string(&cfg_path)
+            .await
+            .context("read settings")?;
         if let Ok(s) = serde_json::from_str::<Settings>(&txt) {
             *state.settings.write() = s;
         }
@@ -118,7 +120,9 @@ pub async fn boot(state: &AppState) -> Result<()> {
     // Load persisted auth (raw on disk; ok for desktop usage on user's machine)
     let auth_path = state.data_dir.join("auth.json");
     if auth_path.exists() {
-        let txt = tokio::fs::read_to_string(&auth_path).await.context("read auth")?;
+        let txt = tokio::fs::read_to_string(&auth_path)
+            .await
+            .context("read auth")?;
         if let Ok(a) = serde_json::from_str::<AuthStore>(&txt) {
             *state.auth.write() = a;
         }

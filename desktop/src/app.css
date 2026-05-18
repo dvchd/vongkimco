@@ -52,6 +52,9 @@ input, select {
 input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 
 label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.field > label { display: flex; flex-direction: column; gap: 6px; }
+.field > label > input,
+.field > label > select { text-transform: none; letter-spacing: normal; font-size: 14px; color: var(--text); }
 
 .layout {
     display: grid;
@@ -79,17 +82,21 @@ label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-
     display: inline-flex; align-items: center; justify-content: center;
     font-weight: 700;
 }
-.sidebar a {
+.sidebar .nav-link {
     display: block;
+    width: 100%;
+    text-align: left;
     padding: 8px 12px;
     border-radius: 6px;
+    border: none;
+    background: transparent;
     color: var(--muted);
-    text-decoration: none;
+    font-family: inherit;
     font-size: 14px;
     cursor: pointer;
 }
-.sidebar a:hover { background: var(--surface-2); color: var(--text); }
-.sidebar a.active { background: var(--surface-2); color: var(--text); }
+.sidebar .nav-link:hover { background: var(--surface-2); color: var(--text); }
+.sidebar .nav-link.active { background: var(--surface-2); color: var(--text); }
 .sidebar .footer { margin-top: auto; font-size: 11px; color: var(--muted); }
 
 .main { padding: 24px; overflow: auto; }
