@@ -2,6 +2,7 @@ mod auth;
 mod commands;
 mod db;
 mod monitor;
+mod policy;
 mod screenshot;
 mod settings;
 mod state;
@@ -46,6 +47,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
             commands::save_settings,
+            commands::get_policy,
+            commands::refresh_policy,
             commands::set_server_url,
             commands::test_server,
             commands::auth_start,

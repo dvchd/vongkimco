@@ -7,3 +7,4 @@ pub mod health;
 pub mod home;
 pub mod membership;
 pub mod oauth;
+pub mod policy;

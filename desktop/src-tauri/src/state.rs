@@ -8,6 +8,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::auth::PendingLogin;
 use crate::db::LocalDb;
+use crate::policy::Policy;
 use crate::settings::Settings;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,6 +66,7 @@ pub struct AppState {
     pub screenshot_dir: PathBuf,
     pub db: Arc<LocalDb>,
     pub settings: Arc<RwLock<Settings>>,
+    pub policy: Arc<RwLock<Policy>>,
     pub auth: Arc<RwLock<AuthStore>>,
     pub session: Arc<RwLock<SessionState>>,
     pub pending_login: Arc<RwLock<Option<PendingLogin>>>,
@@ -88,6 +90,7 @@ impl AppState {
             screenshot_dir,
             db: Arc::new(db),
             settings: Arc::new(RwLock::new(Settings::default())),
+            policy: Arc::new(RwLock::new(Policy::default())),
             auth: Arc::new(RwLock::new(AuthStore::default())),
             session: Arc::new(RwLock::new(SessionState::initial())),
             pending_login: Arc::new(RwLock::new(None)),
@@ -100,7 +103,9 @@ impl AppState {
 }
 
 pub async fn boot(state: &AppState) -> Result<()> {
-    // Load persisted settings.
+    // Load persisted settings. Old settings.json may have policy fields
+    // (capture_screenshots, intervals, …) embedded — serde ignores unknown
+    // fields by default so those silently drop.
     let cfg_path = state.data_dir.join("settings.json");
     if cfg_path.exists() {
         let txt = tokio::fs::read_to_string(&cfg_path)
@@ -110,6 +115,10 @@ pub async fn boot(state: &AppState) -> Result<()> {
             *state.settings.write() = s;
         }
     }
+
+    // Load cached policy (server-controlled knobs). If absent, the in-memory
+    // Policy::default() is used until the first network fetch succeeds.
+    *state.policy.write() = crate::policy::load_from_disk(state).await;
 
     // Best-effort migration: nuke the old plain-text auth.json so leftover
     // tokens from the previous device-code build can't be picked up.
@@ -125,6 +134,7 @@ pub async fn boot(state: &AppState) -> Result<()> {
     // Start background loops.
     crate::monitor::start_monitors(state.clone()).await;
     crate::sync::start_sync_loop(state.clone()).await;
+    crate::policy::start_refresh_loop(state.clone()).await;
     crate::monitor::register_hotkeys(state.clone()).await;
 
     Ok(())

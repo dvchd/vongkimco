@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Cấu hình desktop · Vòng Kim Cô{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Cấu hình desktop</h1>
+    <p>
+        Chính sách thu thập áp dụng cho tất cả thiết bị. Mỗi desktop sẽ poll
+        cấu hình theo chu kỳ <strong>refresh_interval_secs</strong> ở dưới.
+        Các tuỳ chọn riêng máy (server URL, phím tắt, autostart) vẫn nằm trên
+        từng desktop.
+    </p>
+</div>
+
+{% match flash %}
+{% when Some with (msg) %}
+    <div class="banner ok">{{ msg }}</div>
+{% when None %}
+{% endmatch %}
+
+<form method="POST" action="/admin/policy">
+    <div class="card">
+        <h2 style="margin-top: 0;">Ảnh chụp màn hình</h2>
+        <div class="field">
+            <label>
+                <input type="checkbox" name="capture_screenshots" value="1"
+                    {% if policy.capture_screenshots != 0 %}checked{% endif %} />
+                <span style="text-transform: none; letter-spacing: normal; color: var(--text);">Cho phép chụp màn hình định kỳ</span>
+            </label>
+            <div class="hint">Bỏ chọn để tắt hoàn toàn việc chụp ảnh trên mọi desktop.</div>
+        </div>
+        <div class="row" style="gap: 12px; flex-wrap: wrap;">
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <label>Chu kỳ chụp (giây) — 30…3600
+                    <input type="number" name="screenshot_interval_secs"
+                        min="30" max="3600" value="{{ policy.screenshot_interval_secs }}" />
+                </label>
+            </div>
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <label>Chất lượng JPEG — 20…95
+                    <input type="number" name="screenshot_quality"
+                        min="20" max="95" value="{{ policy.screenshot_quality }}" />
+                </label>
+            </div>
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <label>Bề rộng tối đa (px) — 640…3840
+                    <input type="number" name="screenshot_max_width"
+                        min="640" max="3840" value="{{ policy.screenshot_max_width }}" />
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top: 0;">Đo activity &amp; ứng dụng</h2>
+        <div class="row" style="gap: 12px; flex-wrap: wrap;">
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <label>Chu kỳ mẫu activity (giây) — 5…300
+                    <input type="number" name="activity_sample_interval_secs"
+                        min="5" max="300" value="{{ policy.activity_sample_interval_secs }}" />
+                </label>
+            </div>
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <label>Chu kỳ snapshot ứng dụng (giây) — 10…600
+                    <input type="number" name="app_snapshot_interval_secs"
+                        min="10" max="600" value="{{ policy.app_snapshot_interval_secs }}" />
+                </label>
+            </div>
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <label>Ngưỡng idle (giây) — 30…1800
+                    <input type="number" name="idle_threshold_secs"
+                        min="30" max="1800" value="{{ policy.idle_threshold_secs }}" />
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top: 0;">Phân phối cấu hình</h2>
+        <div class="field">
+            <label>Chu kỳ desktop poll cấu hình mới (giây) — 60…3600
+                <input type="number" name="refresh_interval_secs"
+                    min="60" max="3600" value="{{ policy.refresh_interval_secs }}" />
+            </label>
+            <div class="hint">
+                Sau khi lưu, desktop sẽ áp dụng cấu hình mới trong tối đa từng đó giây
+                (cộng với độ trễ mạng).
+            </div>
+        </div>
+        <p class="muted small" style="margin: 12px 0 0;">
+            Cập nhật lần cuối: <strong>{{ updated_at_local }}</strong>
+        </p>
+    </div>
+
+    <div class="row" style="margin-top: 18px;">
+        <button type="submit" class="btn-primary">💾 Lưu cấu hình</button>
+    </div>
+</form>
+{% endblock %}

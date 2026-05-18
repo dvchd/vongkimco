@@ -10,7 +10,7 @@ use tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::SqliteStore;
 
 use crate::handlers::{
-    admin, auth_api, desktop_auth, device_api, feedback, health, home, membership, oauth,
+    admin, auth_api, desktop_auth, device_api, feedback, health, home, membership, oauth, policy,
 };
 use crate::state::AppState;
 
@@ -50,6 +50,7 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .route("/auth/refresh", post(auth_api::refresh))
         .route("/auth/verify", get(auth_api::verify))
         .route("/whoami", get(device_api::whoami))
+        .route("/config", get(policy::get_config))
         .route("/sessions", post(device_api::upsert_session))
         .route("/activity", post(device_api::ingest_activity))
         .route("/app-snapshots", post(device_api::ingest_app_snapshots))
@@ -78,6 +79,7 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .route("/members/remove", post(admin::members_remove))
         .route("/members/approve-request", post(membership::approve))
         .route("/members/reject-request", post(membership::reject))
+        .route("/policy", get(policy::admin_page).post(policy::admin_save))
         .route("/feedback", get(feedback::admin_list))
         .route("/feedback/:id", get(feedback::admin_detail))
         .route("/feedback/:id/reply", post(feedback::reply_admin));

@@ -5,6 +5,7 @@ use tauri::State;
 
 use crate::auth::{self, PollOutcome, StartLoginResp};
 use crate::db::LocalSession;
+use crate::policy::Policy;
 use crate::settings::Settings;
 use crate::state::{emit_status, save_settings_to_disk, AppState, UserInfo};
 
@@ -52,6 +53,17 @@ pub async fn set_server_url(state: State<'_, AppState>, url: String) -> CmdResul
     }
     save_settings_to_disk(&state).await.map_err(err)?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_policy(state: State<'_, AppState>) -> CmdResult<Policy> {
+    Ok(state.policy.read().clone())
+}
+
+#[tauri::command]
+pub async fn refresh_policy(state: State<'_, AppState>) -> CmdResult<Policy> {
+    crate::policy::try_refresh(&state).await;
+    Ok(state.policy.read().clone())
 }
 
 #[tauri::command]

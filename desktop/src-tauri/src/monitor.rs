@@ -11,8 +11,14 @@ use tokio::time::sleep;
 use crate::state::{emit_status, AppState};
 
 pub async fn start_monitors(state: AppState) {
+    // device_query's DeviceState holds an X11 Rc on Linux, so its handle isn't
+    // Send. Park the activity poller on its own OS thread to avoid pulling that
+    // non-Send value into the tokio runtime.
     let s1 = state.clone();
-    tokio::spawn(async move { activity_loop(s1).await });
+    std::thread::Builder::new()
+        .name("vkc-activity".into())
+        .spawn(move || activity_loop(s1))
+        .expect("spawn activity thread");
 
     let s2 = state.clone();
     tokio::spawn(async move { app_snapshot_loop(s2).await });
@@ -21,7 +27,7 @@ pub async fn start_monitors(state: AppState) {
     tokio::spawn(async move { screenshot_loop(s3).await });
 }
 
-async fn activity_loop(state: AppState) {
+fn activity_loop(state: AppState) {
     let device_state = DeviceState::new();
     let mut last_keys: HashSet<device_query::Keycode> = HashSet::new();
     let mut last_mouse = device_state.get_mouse().coords;
@@ -30,8 +36,13 @@ async fn activity_loop(state: AppState) {
     let mut counters_mo = 0i64;
 
     loop {
-        let sample_interval = state.settings.read().activity_sample_interval_secs.max(5);
-        let idle_threshold = state.settings.read().idle_threshold_secs.max(15) as f64;
+        let (sample_interval, idle_threshold) = {
+            let p = state.policy.read();
+            (
+                p.activity_sample_interval_secs.max(5),
+                p.idle_threshold_secs.max(15) as f64,
+            )
+        };
 
         // Polling tick: every 1s, sample input deltas. Aggregate sample every `sample_interval`s.
         for _ in 0..sample_interval {
@@ -54,7 +65,7 @@ async fn activity_loop(state: AppState) {
 
             last_keys = keys;
             last_mouse = mouse;
-            sleep(Duration::from_secs(1)).await;
+            std::thread::sleep(Duration::from_secs(1));
         }
 
         let idle_secs = last_activity_ts.elapsed().as_secs_f64();
@@ -93,7 +104,7 @@ async fn app_snapshot_loop(state: AppState) {
     let mut sys = System::new();
 
     loop {
-        let interval = state.settings.read().app_snapshot_interval_secs.max(15);
+        let interval = state.policy.read().app_snapshot_interval_secs.max(15);
         sleep(Duration::from_secs(interval)).await;
 
         let session_id = state.session.read().session_id.clone();
@@ -129,9 +140,14 @@ async fn app_snapshot_loop(state: AppState) {
 
 async fn screenshot_loop(state: AppState) {
     loop {
-        let (enabled, interval) = {
-            let s = state.settings.read();
-            (s.capture_screenshots, s.screenshot_interval_secs.max(30))
+        let (enabled, interval, quality, max_width) = {
+            let p = state.policy.read();
+            (
+                p.capture_screenshots,
+                p.screenshot_interval_secs.max(30),
+                p.screenshot_quality.clamp(20, 95) as u8,
+                p.screenshot_max_width.max(320),
+            )
         };
         sleep(Duration::from_secs(interval)).await;
 
@@ -144,7 +160,7 @@ async fn screenshot_loop(state: AppState) {
         let out_dir = state.screenshot_dir.clone();
         let state_clone = state.clone();
         let result = tokio::task::spawn_blocking(move || {
-            crate::screenshot::capture_primary_jpeg(&out_dir, 50, 1280)
+            crate::screenshot::capture_primary_jpeg(&out_dir, quality, max_width)
         })
         .await;
 

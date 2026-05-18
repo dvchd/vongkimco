@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import {
         loadSettings,
+        loadPolicy,
         loadUser,
         refreshStatus,
         startStatusListener,
@@ -22,6 +23,7 @@
 
     onMount(async () => {
         await loadSettings();
+        await loadPolicy();
         await loadUser();
         await refreshStatus();
         await startStatusListener();

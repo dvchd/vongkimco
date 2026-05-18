@@ -61,7 +61,11 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "sync-s
 machine-uid = "0.5"
 
 # Screenshots
-xcap = "0.0.13"
+# 0.0.13 fails to compile on macOS with newer core-foundation 0.9.4 (type-
+# inference bug on `to_void()`). 0.0.14+ fixes it; staying on the 0.4 line
+# because it's the last docs.rs build that's known-green and keeps the
+# Monitor::all() / capture_image() -> RgbaImage API we use unchanged.
+xcap = "0.4"
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
 
 # Active window

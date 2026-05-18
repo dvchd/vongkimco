@@ -1,7 +1,12 @@
 <script lang="ts">
     import { invoke } from "@tauri-apps/api/core";
     import { getVersion } from "@tauri-apps/api/app";
-    import { settings, saveSettings } from "../lib/stores";
+    import {
+        settings,
+        saveSettings,
+        policy,
+        refreshPolicy,
+    } from "../lib/stores";
     import { updateState, checkForUpdate, downloadAndInstall } from "../lib/updater";
     import { onMount } from "svelte";
 
@@ -9,6 +14,7 @@
     let saved = false;
     let error: string | null = null;
     let appVersion = "";
+    let policyRefreshing = false;
 
     onMount(async () => {
         try { appVersion = await getVersion(); } catch {}
@@ -31,10 +37,23 @@
         await invoke("logout");
         location.reload();
     }
+
+    async function pullPolicy() {
+        policyRefreshing = true;
+        try {
+            await refreshPolicy();
+        } finally {
+            policyRefreshing = false;
+        }
+    }
+
+    function fmtBool(b: boolean) {
+        return b ? "Bật" : "Tắt";
+    }
 </script>
 
 <h1>Cài đặt</h1>
-<p>Điều chỉnh chu kỳ thu thập, phím tắt và các tuỳ chọn cập nhật.</p>
+<p>Tuỳ chọn riêng máy nằm bên dưới. Các chính sách thu thập do admin quản lý ở phía server.</p>
 
 {#if saved}<div class="banner ok">✓ Đã lưu cài đặt</div>{/if}
 {#if error}<div class="banner error">{error}</div>{/if}
@@ -51,43 +70,52 @@
 </div>
 
 <div class="card">
-    <h2 style="margin-top: 0;">📊 Thu thập dữ liệu</h2>
-    <div class="field">
-        <label>
-            <input type="checkbox" bind:checked={local.capture_screenshots} />
-            <span style="text-transform: none; letter-spacing: normal; color: var(--text);">Chụp màn hình định kỳ</span>
-        </label>
-        <div class="hint">Ảnh JPEG nén ~50%, resize ≤ 1280px. Tắt nếu chỉ cần theo dõi keystroke/mouse.</div>
+    <div class="row between" style="align-items: baseline;">
+        <h2 style="margin-top: 0;">📊 Thu thập dữ liệu</h2>
+        <span class="muted small">🔒 Quản lý bởi admin</span>
     </div>
-    <div class="row" style="gap: 12px; flex-wrap: wrap;">
-        <div class="field" style="flex: 1; min-width: 200px;">
-            <label>
-                Chu kỳ chụp màn hình (giây)
-                <input type="number" min="30" max="3600" bind:value={local.screenshot_interval_secs} />
-            </label>
+    {#if $policy}
+        <div class="row" style="gap: 12px; flex-wrap: wrap;">
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chụp màn hình</div>
+                <div style="font-weight: 600;">{fmtBool($policy.capture_screenshots)}</div>
+            </div>
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ chụp (s)</div>
+                <div style="font-weight: 600;">{$policy.screenshot_interval_secs}</div>
+            </div>
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ activity (s)</div>
+                <div style="font-weight: 600;">{$policy.activity_sample_interval_secs}</div>
+            </div>
         </div>
-        <div class="field" style="flex: 1; min-width: 200px;">
-            <label>
-                Chu kỳ đo activity (giây)
-                <input type="number" min="5" max="300" bind:value={local.activity_sample_interval_secs} />
-            </label>
+        <div class="row" style="gap: 12px; flex-wrap: wrap;">
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ snapshot ứng dụng (s)</div>
+                <div style="font-weight: 600;">{$policy.app_snapshot_interval_secs}</div>
+            </div>
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Ngưỡng idle (s)</div>
+                <div style="font-weight: 600;">{$policy.idle_threshold_secs}</div>
+            </div>
+            <div class="field" style="flex: 1; min-width: 200px;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ làm mới cấu hình (s)</div>
+                <div style="font-weight: 600;">{$policy.refresh_interval_secs}</div>
+            </div>
         </div>
-    </div>
-    <div class="row" style="gap: 12px; flex-wrap: wrap;">
-        <div class="field" style="flex: 1; min-width: 200px;">
-            <label>
-                Chu kỳ snapshot ứng dụng (giây)
-                <input type="number" min="10" max="600" bind:value={local.app_snapshot_interval_secs} />
-            </label>
+        <div class="row between" style="margin-top: 12px;">
+            <p class="muted small" style="margin: 0;">
+                {#if $policy.from_server}
+                    Cập nhật cuối từ server: <strong>{$policy.version || "—"}</strong>
+                {:else}
+                    Chưa lấy được cấu hình từ server. Đang dùng giá trị mặc định.
+                {/if}
+            </p>
+            <button on:click={pullPolicy} disabled={policyRefreshing}>
+                {policyRefreshing ? "Đang lấy…" : "Lấy cấu hình mới"}
+            </button>
         </div>
-        <div class="field" style="flex: 1; min-width: 200px;">
-            <label>
-                Ngưỡng idle (giây)
-                <input type="number" min="30" max="1800" bind:value={local.idle_threshold_secs} />
-            </label>
-            <div class="hint">Không có thao tác trong khoảng này = idle.</div>
-        </div>
-    </div>
+    {/if}
 </div>
 
 <div class="card">

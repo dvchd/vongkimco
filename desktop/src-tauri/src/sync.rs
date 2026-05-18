@@ -27,8 +27,8 @@ type SessionRow = (
 );
 
 /// One activity sample queued for upload, keyed by remote session id.
-/// Fields after `local_id`: (sampled_at, idle_seconds, keyboard_events, mouse_events).
-type ActivityItem = (String, String, i64, i64, i64);
+/// Fields after `local_id`: (sampled_at, state, idle_seconds, keyboard_events, mouse_events).
+type ActivityItem = (String, String, String, i64, i64, i64);
 
 /// One app-snapshot row pulled from the local DB:
 /// (local_id, remote_session_id, sampled_at, foreground_app, foreground_title, apps_json).
@@ -193,26 +193,28 @@ async fn push_sessions(state: &AppState, server: &str, token: &str) -> Result<()
 
 async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> Result<()> {
     loop {
-        let rows: Vec<(String, String, String, String, i64, i64, i64)> = state.db.with(|c| {
-            let mut stmt = c.prepare(
-                "SELECT a.id, a.session_id, s.remote_id, a.sampled_at, a.idle_seconds, a.keyboard_events, a.mouse_events
+        let rows: Vec<(String, String, String, String, String, i64, i64, i64)> =
+            state.db.with(|c| {
+                let mut stmt = c.prepare(
+                    "SELECT a.id, a.session_id, s.remote_id, a.sampled_at, a.state, a.idle_seconds, a.keyboard_events, a.mouse_events
                  FROM activity_samples a JOIN sessions s ON s.id = a.session_id
                  WHERE a.synced = 0 AND s.remote_id IS NOT NULL
                  ORDER BY a.sampled_at LIMIT 200"
-            )?;
-            let out = stmt.query_map([], |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, String>(2)?,
-                    r.get::<_, String>(3)?,
-                    r.get::<_, i64>(4)?,
-                    r.get::<_, i64>(5)?,
-                    r.get::<_, i64>(6)?,
-                ))
-            })?.collect::<Result<Vec<_>, _>>()?;
-            Ok(out)
-        })?;
+                )?;
+                let out = stmt.query_map([], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, String>(3)?,
+                        r.get::<_, String>(4)?,
+                        r.get::<_, i64>(5)?,
+                        r.get::<_, i64>(6)?,
+                        r.get::<_, i64>(7)?,
+                    ))
+                })?.collect::<Result<Vec<_>, _>>()?;
+                Ok(out)
+            })?;
         if rows.is_empty() {
             break;
         }
@@ -220,12 +222,12 @@ async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> R
         // Group by remote session id
         let mut groups: std::collections::HashMap<String, Vec<ActivityItem>> = Default::default();
         let mut local_ids: Vec<String> = Vec::with_capacity(rows.len());
-        for (id, _local_sid, remote_sid, sampled_at, idle, kb, mo) in rows {
+        for (id, _local_sid, remote_sid, sampled_at, st, idle, kb, mo) in rows {
             local_ids.push(id.clone());
             groups
                 .entry(remote_sid)
                 .or_default()
-                .push((id, sampled_at, idle, kb, mo));
+                .push((id, sampled_at, st, idle, kb, mo));
         }
 
         let client = reqwest::Client::new();
@@ -233,10 +235,10 @@ async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> R
         for (remote_sid, items) in groups {
             let samples: Vec<serde_json::Value> = items
                 .iter()
-                .map(|(_, sampled_at, idle, kb, mo)| {
+                .map(|(_, sampled_at, st, idle, kb, mo)| {
                     json!({
                         "sampled_at": sampled_at,
-                        "state": if *idle >= 120 { "idle" } else { "active" },
+                        "state": st,
                         "idle_seconds": idle,
                         "keyboard_events": kb,
                         "mouse_events": mo,
@@ -254,7 +256,7 @@ async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> R
             if !resp.status().is_success() {
                 return Err(anyhow!("activity sync HTTP {}", resp.status()));
             }
-            for (id, _, _, _, _) in items {
+            for (id, _, _, _, _, _) in items {
                 acknowledged.push(id);
             }
         }

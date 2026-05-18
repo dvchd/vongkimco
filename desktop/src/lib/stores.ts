@@ -4,14 +4,22 @@ import { listen } from "@tauri-apps/api/event";
 
 export interface Settings {
     server_url: string;
+    hotkey_start: string;
+    hotkey_stop: string;
+    autostart: boolean;
+}
+
+export interface Policy {
     capture_screenshots: boolean;
     screenshot_interval_secs: number;
     activity_sample_interval_secs: number;
     app_snapshot_interval_secs: number;
     idle_threshold_secs: number;
-    hotkey_start: string;
-    hotkey_stop: string;
-    autostart: boolean;
+    screenshot_quality: number;
+    screenshot_max_width: number;
+    refresh_interval_secs: number;
+    version: string;
+    from_server: boolean;
 }
 
 export interface UserInfo {
@@ -34,6 +42,7 @@ export interface SessionState {
 }
 
 export const settings = writable<Settings | null>(null);
+export const policy = writable<Policy | null>(null);
 export const user = writable<UserInfo | null>(null);
 export const sessionState = writable<SessionState>({
     running: false,
@@ -58,6 +67,17 @@ export async function loadSettings() {
 export async function saveSettings(s: Settings) {
     await invoke("save_settings", { settings: s });
     settings.set(s);
+}
+
+export async function loadPolicy() {
+    const p = await invoke<Policy>("get_policy");
+    policy.set(p);
+}
+
+export async function refreshPolicy() {
+    const p = await invoke<Policy>("refresh_policy");
+    policy.set(p);
+    return p;
 }
 
 export async function loadUser() {
