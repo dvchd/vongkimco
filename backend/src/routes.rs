@@ -10,7 +10,7 @@ use tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::SqliteStore;
 
 use crate::handlers::{
-    admin, auth_api, desktop_auth, device_api, feedback, health, membership, oauth,
+    admin, auth_api, desktop_auth, device_api, feedback, health, home, membership, oauth,
 };
 use crate::state::AppState;
 
@@ -95,7 +95,7 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .route("/desktop/done", get(desktop_auth::done));
 
     let root = Router::new()
-        .route("/", get(feedback::home_redirect))
+        .route("/", get(home::home_page))
         .route("/pending", get(membership::pending_page))
         .route("/membership/request", post(membership::submit_request))
         .nest("/api/v1", api)

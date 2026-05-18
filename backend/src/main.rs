@@ -5,6 +5,7 @@ mod handlers;
 mod models;
 mod routes;
 mod state;
+mod time_fmt;
 
 #[cfg(test)]
 mod tests;

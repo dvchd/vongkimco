@@ -14,6 +14,7 @@ use serde::Deserialize;
 use crate::auth::{AdminUser, CurrentUser};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
+use crate::time_fmt::{fmt_local, fmt_local_opt};
 
 const MAX_NOTE: usize = 1000;
 
@@ -53,13 +54,14 @@ async fn fetch_request(state: &AppState, user_id: &str) -> AppResult<Option<Requ
     .bind(user_id)
     .fetch_optional(&state.db)
     .await?;
+    let tz = state.config.app_timezone;
     Ok(row.map(|(status, note, c, u, d)| RequestRow {
         status_label: status_label(&status).to_string(),
         status,
         note: note.unwrap_or_default(),
-        created_at: c,
-        updated_at: u,
-        decided_at: d.unwrap_or_else(|| "—".into()),
+        created_at: fmt_local(&c, tz),
+        updated_at: fmt_local(&u, tz),
+        decided_at: fmt_local_opt(d.as_deref(), tz),
     }))
 }
 
@@ -76,9 +78,14 @@ async fn pending_page_with_flash(
     u: crate::models::User,
     flash: Option<String>,
 ) -> AppResult<Response> {
-    // Admins shouldn't be here.
+    // Admins and already-approved members don't belong on the request form —
+    // bounce them to their normal landing page so the UI doesn't look like
+    // they still need to apply.
     if u.is_admin_bool() {
         return Ok(Redirect::to("/admin").into_response());
+    }
+    if u.is_member_bool() {
+        return Ok(Redirect::to("/feedback").into_response());
     }
     let existing = fetch_request(state, &u.id).await?;
 
@@ -219,7 +226,10 @@ async fn decide(
 }
 
 /// Convenience used by admin_members.html to list pending requests inline.
-pub async fn list_pending(state: &AppState) -> AppResult<Vec<PendingRequestRow>> {
+pub async fn list_pending(
+    state: &AppState,
+    tz: chrono_tz::Tz,
+) -> AppResult<Vec<PendingRequestRow>> {
     let rows = sqlx::query_as::<_, (String, String, Option<String>, String, String)>(
         "SELECT r.id, u.email, r.note, r.created_at, r.updated_at
          FROM membership_requests r JOIN users u ON u.id = r.user_id
@@ -235,7 +245,7 @@ pub async fn list_pending(state: &AppState) -> AppResult<Vec<PendingRequestRow>>
             id,
             email,
             note: note.unwrap_or_default(),
-            created_at: created,
+            created_at: fmt_local(&created, tz),
         })
         .collect())
 }

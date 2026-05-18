@@ -1,8 +1,12 @@
 # Icon assets
 
 Files in this directory are **generated** from the master SVG at
-[`../../scripts/app-icon.svg`](../../scripts/app-icon.svg) and are gitignored —
-do not commit them.
+[`../../../backend/static/app-icon.svg`](../../../backend/static/app-icon.svg)
+and are gitignored — do not commit them.
+
+The SVG lives under `backend/static/` so it is also served by the backend at
+`/static/app-icon.svg` (used by the admin web UI). Single source of truth for
+both the desktop app icon and the web logo.
 
 Regenerate locally:
 

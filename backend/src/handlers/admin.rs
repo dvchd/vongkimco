@@ -13,6 +13,7 @@ use serde::Deserialize;
 use crate::auth::{AdminUser, CurrentUser};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
+use crate::time_fmt::{fmt_local, fmt_local_opt, parse_utc};
 
 #[derive(Template)]
 #[template(path = "login.html")]
@@ -96,6 +97,7 @@ pub struct UserRow {
     pub email: String,
     pub name: String,
     pub is_admin: bool,
+    pub is_member: bool,
     pub session_count: i64,
     pub last_seen: String,
 }
@@ -139,17 +141,6 @@ fn fmt_duration(seconds: i64) -> String {
     }
 }
 
-fn parse_dt(s: &str) -> Option<chrono::DateTime<chrono::Utc>> {
-    chrono::DateTime::parse_from_rfc3339(s)
-        .ok()
-        .map(|d| d.with_timezone(&chrono::Utc))
-        .or_else(|| {
-            chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
-                .ok()
-                .map(|n| chrono::DateTime::from_naive_utc_and_offset(n, chrono::Utc))
-        })
-}
-
 pub async fn login_page(Query(q): Query<std::collections::HashMap<String, String>>) -> Response {
     LoginTemplate {
         reason: q.get("reason").cloned(),
@@ -187,12 +178,13 @@ pub async fn admin_root(
     .fetch_all(&state.db)
     .await?;
 
+    let tz = state.config.app_timezone;
     let recent_sessions: Vec<SessionRow> = rows
         .into_iter()
         .map(|(id, email, started_at, ended_at, note)| {
             let dur = match (
-                parse_dt(&started_at),
-                ended_at.as_ref().and_then(|s| parse_dt(s)),
+                parse_utc(&started_at),
+                ended_at.as_ref().and_then(|s| parse_utc(s)),
             ) {
                 (Some(a), Some(b)) => fmt_duration((b - a).num_seconds()),
                 (Some(a), None) => format!(
@@ -204,8 +196,8 @@ pub async fn admin_root(
             SessionRow {
                 id,
                 user_email: email,
-                started_at,
-                ended_at: ended_at.unwrap_or_else(|| "—".into()),
+                started_at: fmt_local(&started_at, tz),
+                ended_at: fmt_local_opt(ended_at.as_deref(), tz),
                 duration: dur,
                 note: note.unwrap_or_default(),
             }
@@ -227,26 +219,31 @@ pub async fn users_list(
     State(state): State<Arc<AppState>>,
     AdminUser(u): AdminUser,
 ) -> AppResult<Response> {
-    let rows = sqlx::query_as::<_, (String, String, Option<String>, i64, i64, Option<String>)>(
-        "SELECT u.id, u.email, u.name, u.is_admin,
+    let rows =
+        sqlx::query_as::<_, (String, String, Option<String>, i64, i64, i64, Option<String>)>(
+            "SELECT u.id, u.email, u.name, u.is_admin, u.is_member,
                 (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id) AS session_count,
                 (SELECT MAX(s.started_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen
          FROM users u
          ORDER BY u.created_at DESC",
-    )
-    .fetch_all(&state.db)
-    .await?;
+        )
+        .fetch_all(&state.db)
+        .await?;
 
+    let tz = state.config.app_timezone;
     let users: Vec<UserRow> = rows
         .into_iter()
-        .map(|(id, email, name, is_admin, count, last)| UserRow {
-            id,
-            email,
-            name: name.unwrap_or_default(),
-            is_admin: is_admin != 0,
-            session_count: count,
-            last_seen: last.unwrap_or_else(|| "—".into()),
-        })
+        .map(
+            |(id, email, name, is_admin, is_member, count, last)| UserRow {
+                id,
+                email,
+                name: name.unwrap_or_default(),
+                is_admin: is_admin != 0,
+                is_member: is_admin != 0 || is_member != 0,
+                session_count: count,
+                last_seen: fmt_local_opt(last.as_deref(), tz),
+            },
+        )
         .collect();
 
     Ok(UsersTemplate {
@@ -284,12 +281,13 @@ pub async fn user_detail(
     .fetch_all(&state.db)
     .await?;
 
+    let tz = state.config.app_timezone;
     let sessions: Vec<SessionRow> = rows
         .into_iter()
         .map(|(id, started_at, ended_at, note)| {
             let dur = match (
-                parse_dt(&started_at),
-                ended_at.as_ref().and_then(|s| parse_dt(s)),
+                parse_utc(&started_at),
+                ended_at.as_ref().and_then(|s| parse_utc(s)),
             ) {
                 (Some(a), Some(b)) => fmt_duration((b - a).num_seconds()),
                 (Some(a), None) => format!(
@@ -301,8 +299,8 @@ pub async fn user_detail(
             SessionRow {
                 id,
                 user_email: target.email.clone(),
-                started_at,
-                ended_at: ended_at.unwrap_or_else(|| "—".into()),
+                started_at: fmt_local(&started_at, tz),
+                ended_at: fmt_local_opt(ended_at.as_deref(), tz),
                 duration: dur,
                 note: note.unwrap_or_default(),
             }
@@ -314,8 +312,9 @@ pub async fn user_detail(
         email: target.email.clone(),
         name: target.name.clone().unwrap_or_default(),
         is_admin: target.is_admin_bool(),
+        is_member: target.is_member_bool(),
         session_count,
-        last_seen: last_seen.unwrap_or_else(|| "—".into()),
+        last_seen: fmt_local_opt(last_seen.as_deref(), tz),
     };
 
     Ok(UserDetailTemplate {
@@ -342,9 +341,10 @@ pub async fn session_detail(
         .fetch_one(&state.db)
         .await?;
 
+    let tz = state.config.app_timezone;
     let dur = match (
-        parse_dt(&s.started_at),
-        s.ended_at.as_ref().and_then(|x| parse_dt(x)),
+        parse_utc(&s.started_at),
+        s.ended_at.as_ref().and_then(|x| parse_utc(x)),
     ) {
         (Some(a), Some(b)) => fmt_duration((b - a).num_seconds()),
         (Some(a), None) => format!(
@@ -357,8 +357,8 @@ pub async fn session_detail(
     let session = SessionRow {
         id: s.id.clone(),
         user_email: owner.email.clone(),
-        started_at: s.started_at.clone(),
-        ended_at: s.ended_at.clone().unwrap_or_else(|| "—".into()),
+        started_at: fmt_local(&s.started_at, tz),
+        ended_at: fmt_local_opt(s.ended_at.as_deref(), tz),
         duration: dur,
         note: s.note.clone().unwrap_or_default(),
     };
@@ -386,7 +386,7 @@ pub async fn session_detail(
     let recent_apps: Vec<AppRow> = app_rows
         .into_iter()
         .map(|(t, app, title)| AppRow {
-            sampled_at: t,
+            sampled_at: fmt_local(&t, tz),
             foreground_app: app.unwrap_or_default(),
             foreground_title: title.unwrap_or_default(),
         })
@@ -403,7 +403,7 @@ pub async fn session_detail(
         .into_iter()
         .map(|(id, t, bytes)| ScreenshotRow {
             id,
-            captured_at: t,
+            captured_at: fmt_local(&t, tz),
             bytes: bytes.unwrap_or(0),
             session_id: s.id.clone(),
             user_email: owner.email.clone(),
@@ -440,11 +440,12 @@ pub async fn screenshots_list(
     .fetch_all(&state.db)
     .await?;
 
+    let tz = state.config.app_timezone;
     let screenshots: Vec<ScreenshotRow> = rows
         .into_iter()
         .map(|(id, t, bytes, sid, email)| ScreenshotRow {
             id,
-            captured_at: t,
+            captured_at: fmt_local(&t, tz),
             bytes: bytes.unwrap_or(0),
             session_id: sid,
             user_email: email,
@@ -522,6 +523,7 @@ async fn members_page_with_flash(
     .fetch_all(&state.db)
     .await?;
 
+    let tz = state.config.app_timezone;
     let mut db_members: Vec<DbMemberRow> = Vec::with_capacity(rows.len());
     for (email, note, created_at, _added_by, added_by_email) in rows {
         let has_user: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE email = ?")
@@ -532,13 +534,13 @@ async fn members_page_with_flash(
         db_members.push(DbMemberRow {
             email,
             note: note.unwrap_or_default(),
-            created_at,
+            created_at: fmt_local(&created_at, tz),
             added_by_email: added_by_email.unwrap_or_else(|| "—".into()),
             has_user: has_user > 0,
         });
     }
 
-    let pending_requests = crate::handlers::membership::list_pending(state).await?;
+    let pending_requests = crate::handlers::membership::list_pending(state, tz).await?;
 
     Ok(AdminMembersTemplate {
         user_email: admin.email,

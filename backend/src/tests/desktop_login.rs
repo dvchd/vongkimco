@@ -56,6 +56,7 @@ async fn build_test_app() -> (Router, Arc<AppState>) {
         max_screenshot_bytes: 1024 * 1024,
         maintainer_facebook: "".into(),
         maintainer_email: "".into(),
+        app_timezone: chrono_tz::Asia::Ho_Chi_Minh,
     };
 
     let state = Arc::new(AppState::new(config, pool));

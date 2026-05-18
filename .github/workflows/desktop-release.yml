@@ -71,7 +71,7 @@ jobs:
               run: npm install
 
             - name: Generate icons from SVG
-              run: npx @tauri-apps/cli icon scripts/app-icon.svg -o src-tauri/icons
+              run: npx @tauri-apps/cli icon ../backend/static/app-icon.svg -o src-tauri/icons
 
             - name: Inject updater config (pubkey + endpoint) into tauri.conf.json
               env:

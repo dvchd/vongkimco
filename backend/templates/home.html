@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Vòng Kim Cô — Giám sát phiên làm việc</title>
+    <link rel="stylesheet" href="/static/admin.css" />
+    <style>
+        .home-hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 56px 24px 40px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 32px;
+        }
+        .home-hero img { width: 120px; height: 120px; border-radius: 24px; box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35), 0 0 32px rgba(212, 160, 23, 0.25); }
+        .home-hero h1 { font-size: 36px; margin: 18px 0 6px; letter-spacing: -0.02em; }
+        .home-hero .tagline { color: var(--muted); font-size: 16px; max-width: 560px; margin: 0 0 22px; line-height: 1.55; }
+        .home-hero .cta-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .home-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+        .home-grid .card { margin: 0; }
+        .home-grid .card h3 { margin: 0 0 6px; font-size: 15px; }
+        .home-grid .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+        .role-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .role-table th, .role-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: top; }
+        .role-table th { background: var(--surface-2); color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
+        .role-table tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <img class="logo" src="/static/app-icon.svg" alt="Vòng Kim Cô" width="28" height="28" />
+        <a href="/">Vòng Kim Cô</a>
+    </div>
+    <nav class="nav">
+        <a href="https://github.com/dvcuong-hust/vongkimco" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+    <div class="user">
+        {% match viewer %}
+        {% when Some with (v) %}
+            <span class="role">{{ v.role_label }}</span>
+            <span>{{ v.email }}</span>
+            <a href="{{ v.destination }}" class="btn-secondary">Vào trang của tôi</a>
+            <a href="/admin/logout" class="btn-ghost">Đăng xuất</a>
+        {% when None %}
+            <a href="/admin/oauth/start" class="btn-primary">Đăng nhập</a>
+        {% endmatch %}
+    </div>
+</header>
+<main class="container">
+    <section class="home-hero">
+        <img src="/static/app-icon.svg" alt="Vòng Kim Cô" />
+        <h1>Vòng Kim Cô</h1>
+        <p class="tagline">
+            <em>"Chiếc vòng kim cô — siết khi tâm trí trượt khỏi việc."</em><br>
+            Hệ thống mã nguồn mở giám sát phiên làm việc online: ghi nhận hoạt động bàn phím / chuột,
+            chụp ảnh màn hình định kỳ, tổng hợp về trang quản trị.
+        </p>
+        <div class="cta-row">
+            {% match viewer %}
+            {% when Some with (v) %}
+                <a href="{{ v.destination }}" class="btn-primary">Vào trang của tôi</a>
+                <a href="https://github.com/dvcuong-hust/vongkimco/releases/latest" target="_blank" rel="noopener" class="btn-secondary">Tải desktop app</a>
+            {% when None %}
+                <a href="/admin/oauth/start" class="btn-primary">Đăng nhập bằng Google</a>
+                <a href="https://github.com/dvcuong-hust/vongkimco/releases/latest" target="_blank" rel="noopener" class="btn-secondary">Tải desktop app</a>
+            {% endmatch %}
+        </div>
+    </section>
+
+    <h2>Tính năng chính</h2>
+    <div class="home-grid">
+        <div class="card">
+            <h3>🖥️ Desktop app đa nền tảng</h3>
+            <p>Windows · macOS · Linux. Chạy nền, bắt đầu/dừng phiên bằng phím tắt, tự khởi động cùng hệ thống, tự cập nhật qua chữ ký Ed25519.</p>
+        </div>
+        <div class="card">
+            <h3>📸 Ghi nhận hoạt động</h3>
+            <p>Chụp ảnh màn hình định kỳ (mặc định 180s, JPEG ~50%), đếm sự kiện bàn phím/chuột, snapshot ứng dụng foreground.</p>
+        </div>
+        <div class="card">
+            <h3>🔒 Bảo mật &amp; offline-first</h3>
+            <p>Đăng nhập Google OAuth, JWT TTL 1 giờ, refresh token quay vòng lưu trong OS keyring. Hoạt động offline, tự đồng bộ khi có mạng.</p>
+        </div>
+        <div class="card">
+            <h3>📊 Trang quản trị</h3>
+            <p>Tổng hợp người dùng, phiên, ảnh chụp. Quản lý thành viên, duyệt yêu cầu xin gia nhập, trả lời phản hồi.</p>
+        </div>
+        <div class="card">
+            <h3>💬 Phản hồi mở</h3>
+            <p>Mọi người đăng nhập đều gửi được bình luận / báo lỗi / đề xuất tính năng. Rate-limit 8 bài/giờ chống spam.</p>
+        </div>
+        <div class="card">
+            <h3>🛠️ Mã nguồn mở (MIT)</h3>
+            <p>Toàn bộ pipeline viết bằng Rust: Axum + SQLite + Tauri 2 + Svelte. Đọc, fork, tự host trên server riêng đều được.</p>
+        </div>
+    </div>
+
+    <h2>Vai trò người dùng</h2>
+    <div class="table-wrap" style="margin-bottom: 32px;">
+        <table class="role-table">
+            <thead>
+                <tr><th style="width: 140px;">Vai trò</th><th>Quyền</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge admin">Quản trị viên</span></td>
+                    <td class="muted">Toàn quyền hệ thống: xem mọi phiên, ảnh chụp, quản lý thành viên, duyệt yêu cầu, trả lời feedback.</td>
+                </tr>
+                <tr>
+                    <td><span class="badge member">Thành viên</span></td>
+                    <td class="muted">Ghép nối desktop app để ghi nhận phiên làm việc; gửi và xem phản hồi.</td>
+                </tr>
+                <tr>
+                    <td><span class="badge guest">Khách</span></td>
+                    <td class="muted">Chỉ gửi phản hồi / báo lỗi. Muốn dùng desktop cần được quản trị viên duyệt qua trang xin làm thành viên.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Liên hệ</h2>
+    <div class="card">
+        <p class="muted" style="margin: 0 0 10px;">Cần đính kèm ảnh, hoặc liên hệ trực tiếp:</p>
+        <ul style="margin: 0;">
+            <li>Facebook: <a href="{{ maintainer_facebook }}" target="_blank" rel="noopener" style="color: var(--primary);">{{ maintainer_facebook }}</a></li>
+            <li>Email: <a href="mailto:{{ maintainer_email }}" style="color: var(--primary);">{{ maintainer_email }}</a></li>
+        </ul>
+    </div>
+</main>
+<footer class="footer">
+    <small>Vòng Kim Cô · Open Source · MIT · <a href="https://github.com/dvcuong-hust/vongkimco" target="_blank" rel="noopener" style="color: inherit;">GitHub</a></small>
+</footer>
+</body>
+</html>

@@ -9,7 +9,8 @@
 <body class="centered">
 <div class="login-card">
     <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 8px;">
-        <span class="logo" style="width: 48px; height: 48px; background: var(--primary); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: #111; box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35), 0 0 16px rgba(212, 160, 23, 0.25);">⚙</span>
+        <img src="/static/app-icon.svg" alt="Vòng Kim Cô" width="72" height="72"
+             style="border-radius: 16px; box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35), 0 0 24px rgba(212, 160, 23, 0.25);" />
         <h1 style="margin: 0;">Vòng Kim Cô</h1>
     </div>
     <p class="muted">Hệ thống giám sát phiên làm việc trực tuyến.</p>
@@ -21,10 +22,14 @@
     {% when None %}
     {% endmatch %}
     <a href="/admin/oauth/start" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px 18px; margin-top: 12px;">Đăng nhập bằng Google</a>
-    <p class="muted small" style="margin-top: 18px;">
-        Chỉ tài khoản có trong danh sách quản trị mới truy cập được trang quản trị.
-        <br>Member có thể vào <a href="/feedback" style="color: var(--primary);">/feedback</a> để gửi báo lỗi/đề xuất.
-    </p>
+    <div class="muted small" style="margin-top: 18px; text-align: left; line-height: 1.7;">
+        Mọi tài khoản Google đều có thể đăng nhập. Quyền truy cập tuỳ vai trò:
+        <ul style="margin: 6px 0 0; padding-left: 22px;">
+            <li><strong>Quản trị viên</strong>: toàn quyền hệ thống.</li>
+            <li><strong>Thành viên</strong>: ghép nối ứng dụng desktop để ghi nhận phiên làm việc, và gửi <a href="/feedback" style="color: var(--primary);">phản hồi</a>.</li>
+            <li><strong>Khách</strong>: chỉ gửi <a href="/feedback" style="color: var(--primary);">phản hồi / báo lỗi</a>; muốn dùng desktop cần được quản trị viên duyệt qua trang <a href="/pending" style="color: var(--primary);">xin làm thành viên</a>.</li>
+        </ul>
+    </div>
 </div>
 </body>
 </html>

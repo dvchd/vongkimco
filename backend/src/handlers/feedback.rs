@@ -15,6 +15,7 @@ use serde::Deserialize;
 use crate::auth::{AdminUser, CurrentUser};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
+use crate::time_fmt::fmt_local;
 
 const MAX_BODY: usize = 4000;
 const MAX_TITLE: usize = 200;
@@ -122,6 +123,7 @@ pub async fn member_list(
     .fetch_all(&state.db)
     .await?;
 
+    let tz = state.config.app_timezone;
     let posts = rows
         .into_iter()
         .map(
@@ -133,7 +135,7 @@ pub async fn member_list(
                 body: truncate(&body, 200),
                 status_label: status_label(&status).to_string(),
                 status,
-                created_at,
+                created_at: fmt_local(&created_at, tz),
                 reply_count,
             },
         )
@@ -261,12 +263,13 @@ async fn detail_impl(
     .fetch_all(&state.db)
     .await?;
 
+    let tz = state.config.app_timezone;
     let replies = reply_rows
         .into_iter()
         .map(|(email, is_admin, body, created)| ReplyRow {
             author_email: email,
             body,
-            created_at: created,
+            created_at: fmt_local(&created, tz),
             is_admin_reply: is_admin != 0,
         })
         .collect();
@@ -279,7 +282,7 @@ async fn detail_impl(
         body,
         status_label: status_label(&status).to_string(),
         status,
-        created_at,
+        created_at: fmt_local(&created_at, tz),
         reply_count: 0,
     };
 
@@ -432,6 +435,7 @@ pub async fn admin_list(
     }
     let rows = q.fetch_all(&state.db).await?;
 
+    let tz = state.config.app_timezone;
     let posts = rows
         .into_iter()
         .map(
@@ -443,7 +447,7 @@ pub async fn admin_list(
                 body: truncate(&body, 240),
                 status_label: status_label(&status).to_string(),
                 status,
-                created_at,
+                created_at: fmt_local(&created_at, tz),
                 reply_count,
             },
         )
@@ -457,13 +461,3 @@ pub async fn admin_list(
     .into_response())
 }
 
-/// Route after successful login: admin → /admin, everyone else (member or
-/// guest) → /feedback. Guests see a banner on /feedback prompting them to
-/// request membership.
-pub async fn home_redirect(crate::auth::CurrentUser(u): crate::auth::CurrentUser) -> Response {
-    if u.is_admin_bool() {
-        Redirect::to("/admin").into_response()
-    } else {
-        Redirect::to("/feedback").into_response()
-    }
-}

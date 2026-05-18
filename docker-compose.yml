@@ -34,6 +34,9 @@ services:
             JWT_SECRET: ${JWT_SECRET}
             # Max paired devices per non-admin user (admins unlimited).
             DESKTOP_DEVICE_LIMIT: ${DESKTOP_DEVICE_LIMIT:-5}
+            # IANA timezone for rendering timestamps in the admin web UI.
+            # Storage stays UTC; this only affects display.
+            APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
             RUST_LOG: ${RUST_LOG:-info,sqlx=warn,tower_http=info}
         volumes:
             - vongkimco_data:/data

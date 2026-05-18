@@ -1,6 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
+use chrono_tz::Tz;
 use sqlx::SqlitePool;
 
 #[derive(Clone, Debug)]
@@ -21,6 +22,9 @@ pub struct Config {
     pub max_screenshot_bytes: usize,
     pub maintainer_facebook: String,
     pub maintainer_email: String,
+    /// Timezone used to render timestamps in the admin web UI. Storage stays
+    /// UTC; this only affects display. Set via env `APP_TIMEZONE` (IANA name).
+    pub app_timezone: Tz,
 }
 
 impl Config {
@@ -68,6 +72,10 @@ impl Config {
             .unwrap_or_else(|_| "2097152".to_string()) // 2 MiB
             .parse()
             .unwrap_or(2 * 1024 * 1024);
+        let app_timezone: Tz = env::var("APP_TIMEZONE")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(chrono_tz::Asia::Ho_Chi_Minh);
 
         Ok(Self {
             port,
@@ -83,6 +91,7 @@ impl Config {
             max_screenshot_bytes,
             maintainer_facebook,
             maintainer_email,
+            app_timezone,
         })
     }
 

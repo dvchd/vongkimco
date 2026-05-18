@@ -4,8 +4,14 @@
 <div class="page-header">
     <h1>{{ viewing.email }}</h1>
     <p>
-        {{ viewing.name }}
-        {% if viewing.is_admin %} · <span class="badge admin">admin</span>{% endif %}
+        {{ viewing.name }} ·
+        {% if viewing.is_admin %}
+            <span class="badge admin">admin</span>
+        {% else if viewing.is_member %}
+            <span class="badge member">member</span>
+        {% else %}
+            <span class="badge guest">guest</span>
+        {% endif %}
     </p>
 </div>
 

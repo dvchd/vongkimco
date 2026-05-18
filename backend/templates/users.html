@@ -25,8 +25,10 @@
             <td>
                 {% if u.is_admin %}
                     <span class="badge admin">admin</span>
+                {% else if u.is_member %}
+                    <span class="badge member">member</span>
                 {% else %}
-                    <span class="badge member">user</span>
+                    <span class="badge guest">guest</span>
                 {% endif %}
             </td>
             <td>{{ u.session_count }}</td>
