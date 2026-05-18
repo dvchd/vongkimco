@@ -1,20 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Ảnh chụp · Vòng Kim Cô{% endblock %}
 {% block content %}
-<h1>Ảnh chụp màn hình</h1>
+<div class="page-header">
+    <h1>Ảnh chụp màn hình</h1>
+    <p>Toàn bộ ảnh chụp đã đồng bộ về server. Click để xem ảnh gốc.</p>
+</div>
+
+{% if screenshots.is_empty() %}
+    <div class="empty">
+        <div class="icon">📷</div>
+        <p>Chưa có ảnh chụp nào.</p>
+        <p class="small">Desktop app sẽ tự động chụp định kỳ trong khi phiên đang chạy.</p>
+    </div>
+{% else %}
 <div class="grid-shots">
     {% for sh in screenshots %}
     <a class="shot" href="/admin/screenshots/{{ sh.id }}/image" target="_blank">
         <img src="/admin/screenshots/{{ sh.id }}/image" alt="screenshot" loading="lazy" />
         <div class="shot-meta">
-            <div>{{ sh.user_email }}</div>
+            <div><strong style="color: var(--text);">{{ sh.user_email }}</strong></div>
             <div>{{ sh.captured_at }}</div>
-            <div><a href="/admin/sessions/{{ sh.session_id }}">phiên</a></div>
+            <div><a href="/admin/sessions/{{ sh.session_id }}">Xem phiên →</a></div>
         </div>
     </a>
     {% endfor %}
-    {% if screenshots.is_empty() %}
-    <p class="muted">Chưa có ảnh chụp nào.</p>
-    {% endif %}
 </div>
+{% endif %}
 {% endblock %}

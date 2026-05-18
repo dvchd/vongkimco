@@ -47,27 +47,29 @@
 <style>
     .update-banner {
         background: var(--surface);
-        border: 1px solid var(--primary);
-        border-left-width: 4px;
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--primary);
         border-radius: 8px;
         padding: 12px 16px;
-        margin: 12px 24px;
+        margin: 0 0 16px;
         display: flex;
         gap: 12px;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
-    .update-banner.ok { border-color: var(--ok); }
-    .update-banner.err { border-color: var(--danger); }
+    .update-banner.ok  { border-left-color: var(--ok); }
+    .update-banner.err { border-left-color: var(--danger); }
     .update-info { flex: 1; min-width: 240px; }
-    .update-actions { display: flex; gap: 8px; }
-    details summary { cursor: pointer; color: var(--muted); margin-top: 4px; }
+    .update-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    details summary { cursor: pointer; color: var(--muted); margin-top: 4px; user-select: none; }
     details pre {
         max-height: 160px; overflow: auto;
         background: var(--surface-2); padding: 8px; border-radius: 4px;
         font-size: 12px; white-space: pre-wrap; word-wrap: break-word;
         margin: 6px 0 0;
+        border: 1px solid var(--border);
     }
     .progress-track {
         height: 6px;
@@ -75,10 +77,11 @@
         border-radius: 3px;
         margin-top: 8px;
         overflow: hidden;
+        border: 1px solid var(--border);
     }
     .progress-fill {
         height: 100%;
         background: var(--primary);
-        transition: width 0.2s;
+        transition: width 0.2s ease;
     }
 </style>

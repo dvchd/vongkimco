@@ -1,7 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Người dùng · Vòng Kim Cô{% endblock %}
 {% block content %}
-<h1>Người dùng</h1>
+<div class="page-header">
+    <h1>Người dùng</h1>
+    <p>Tất cả tài khoản đã đăng nhập hệ thống.</p>
+</div>
+
+{% if users.is_empty() %}
+    <div class="empty">
+        <div class="icon">👥</div>
+        <p>Chưa có người dùng nào đăng nhập.</p>
+    </div>
+{% else %}
+<div class="table-wrap">
 <table class="data">
     <thead>
         <tr><th>Email</th><th>Tên</th><th>Vai trò</th><th>Số phiên</th><th>Phiên gần nhất</th></tr>
@@ -11,14 +22,19 @@
         <tr>
             <td><a href="/admin/users/{{ u.id }}">{{ u.email }}</a></td>
             <td>{{ u.name }}</td>
-            <td>{% if u.is_admin %}<span class="badge admin">admin</span>{% else %}user{% endif %}</td>
+            <td>
+                {% if u.is_admin %}
+                    <span class="badge admin">admin</span>
+                {% else %}
+                    <span class="badge member">user</span>
+                {% endif %}
+            </td>
             <td>{{ u.session_count }}</td>
-            <td>{{ u.last_seen }}</td>
+            <td class="muted small">{{ u.last_seen }}</td>
         </tr>
         {% endfor %}
-        {% if users.is_empty() %}
-        <tr><td colspan="5" class="muted center">Chưa có người dùng.</td></tr>
-        {% endif %}
     </tbody>
 </table>
+</div>
+{% endif %}
 {% endblock %}

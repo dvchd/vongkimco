@@ -8,18 +8,22 @@
 </head>
 <body class="centered">
 <div class="login-card">
-    <h1>Kích hoạt thiết bị</h1>
-    <p>Bạn đang đăng nhập với <strong>{{ user_email }}</strong>.</p>
-    <p class="muted">Nhập mã hiển thị trên ứng dụng desktop để liên kết thiết bị với tài khoản của bạn.</p>
+    <div style="font-size: 36px; margin-bottom: 4px;">🔗</div>
+    <h1 style="margin: 0 0 8px;">Kích hoạt thiết bị</h1>
+    <p class="muted" style="margin: 0 0 6px;">Đăng nhập với <strong style="color: var(--text);">{{ user_email }}</strong></p>
+    <p class="muted small">Nhập mã hiển thị trên ứng dụng desktop để liên kết thiết bị với tài khoản của bạn.</p>
     {% match error %}
     {% when Some with (e) %}
-        <div class="error">{{ e }}</div>
+        <div class="banner error" style="text-align: left; margin: 16px 0;">{{ e }}</div>
     {% when None %}
     {% endmatch %}
-    <form method="POST" action="/device/activate">
+    <form method="POST" action="/device/activate" style="margin-top: 16px;">
         <input type="text" name="code" value="{{ code }}" placeholder="XXXX-XXXX" maxlength="16" required class="code-input" autofocus />
-        <button type="submit" class="btn-primary">Phê duyệt</button>
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px;">Phê duyệt thiết bị</button>
     </form>
+    <p class="muted small" style="margin-top: 18px;">
+        Sau khi phê duyệt, ứng dụng desktop sẽ tự nhận token và sẵn sàng bắt đầu phiên.
+    </p>
 </div>
 </body>
 </html>

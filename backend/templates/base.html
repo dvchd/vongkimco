@@ -12,7 +12,7 @@
         <span class="logo">⚙</span>
         <a href="/admin">Vòng Kim Cô</a>
     </div>
-    <nav class="nav">
+    <nav class="nav" id="main-nav">
         {% block nav %}
         <a href="/admin">Tổng quan</a>
         <a href="/admin/users">Người dùng</a>
@@ -23,6 +23,7 @@
     </nav>
     <div class="user">
         {% block user %}
+        <span class="role">Admin</span>
         <span>{{ user_email }}</span>
         <a href="/admin/logout" class="btn-ghost">Đăng xuất</a>
         {% endblock %}
@@ -32,7 +33,24 @@
     {% block content %}{% endblock %}
 </main>
 <footer class="footer">
-    <small>Vòng Kim Cô · Open Source · MIT</small>
+    <small>Vòng Kim Cô · Open Source · MIT · <a href="https://github.com/dvcuong-hust/vongkimco" target="_blank" rel="noopener" style="color: inherit;">GitHub</a></small>
 </footer>
+<script>
+    (function () {
+        var path = window.location.pathname;
+        var links = document.querySelectorAll('#main-nav a');
+        var best = null;
+        var bestLen = -1;
+        for (var i = 0; i < links.length; i++) {
+            var href = links[i].getAttribute('href') || '';
+            if (!href) continue;
+            // Match exact path or any path nested under this link's href.
+            if (path === href || (href !== '/' && path.indexOf(href + '/') === 0)) {
+                if (href.length > bestLen) { best = links[i]; bestLen = href.length; }
+            }
+        }
+        if (best) best.classList.add('active');
+    })();
+</script>
 </body>
 </html>

@@ -1,17 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Phiên {{ session.id }} · Vòng Kim Cô{% endblock %}
 {% block content %}
-<h1>Chi tiết phiên</h1>
-<p class="muted">Người dùng: <strong>{{ owner_email }}</strong></p>
-
-<div class="kpis">
-    <div class="kpi"><div class="kpi-value">{{ session.started_at }}</div><div class="kpi-label">Bắt đầu</div></div>
-    <div class="kpi"><div class="kpi-value">{{ session.ended_at }}</div><div class="kpi-label">Kết thúc</div></div>
-    <div class="kpi"><div class="kpi-value">{{ session.duration }}</div><div class="kpi-label">Thời lượng</div></div>
-    <div class="kpi"><div class="kpi-value">{{ activity_summary.active_pct }}%</div><div class="kpi-label">Active</div></div>
+<div class="page-header">
+    <h1>Chi tiết phiên</h1>
+    <p>Người dùng: <strong>{{ owner_email }}</strong></p>
 </div>
 
-<h2>Hoạt động</h2>
+<div class="kpis">
+    <div class="kpi"><div class="kpi-label">Bắt đầu</div><div class="kpi-value" style="font-size: 14px;">{{ session.started_at }}</div></div>
+    <div class="kpi"><div class="kpi-label">Kết thúc</div><div class="kpi-value" style="font-size: 14px;">{{ session.ended_at }}</div></div>
+    <div class="kpi info"><div class="kpi-label">Thời lượng</div><div class="kpi-value">{{ session.duration }}</div></div>
+    <div class="kpi ok"><div class="kpi-label">Active</div><div class="kpi-value">{{ activity_summary.active_pct }}%</div></div>
+</div>
+
+<div class="section-header"><h2>Hoạt động</h2></div>
+<div class="table-wrap">
 <table class="data">
     <thead>
         <tr><th>Mẫu</th><th>Active</th><th>Idle</th><th>Bàn phím</th><th>Chuột</th></tr>
@@ -26,8 +29,16 @@
         </tr>
     </tbody>
 </table>
+</div>
 
-<h2>Ứng dụng đang chạy (gần đây)</h2>
+<div class="section-header"><h2>Ứng dụng đang chạy (gần đây)</h2></div>
+{% if recent_apps.is_empty() %}
+    <div class="empty">
+        <div class="icon">🪟</div>
+        <p>Chưa ghi nhận snapshot ứng dụng nào trong phiên này.</p>
+    </div>
+{% else %}
+<div class="table-wrap">
 <table class="data">
     <thead>
         <tr><th>Thời điểm</th><th>Ứng dụng foreground</th><th>Cửa sổ</th></tr>
@@ -35,27 +46,33 @@
     <tbody>
         {% for a in recent_apps %}
         <tr>
-            <td class="small">{{ a.sampled_at }}</td>
+            <td class="small muted">{{ a.sampled_at }}</td>
             <td><strong>{{ a.foreground_app }}</strong></td>
             <td class="muted">{{ a.foreground_title }}</td>
         </tr>
         {% endfor %}
-        {% if recent_apps.is_empty() %}
-        <tr><td colspan="3" class="muted center">Chưa có dữ liệu.</td></tr>
-        {% endif %}
     </tbody>
 </table>
+</div>
+{% endif %}
 
-<h2>Ảnh chụp màn hình</h2>
+<div class="section-header"><h2>Ảnh chụp màn hình</h2></div>
+{% if screenshots.is_empty() %}
+    <div class="empty">
+        <div class="icon">📷</div>
+        <p>Không có ảnh chụp trong phiên này.</p>
+    </div>
+{% else %}
 <div class="grid-shots">
     {% for sh in screenshots %}
     <a class="shot" href="/admin/screenshots/{{ sh.id }}/image" target="_blank">
         <img src="/admin/screenshots/{{ sh.id }}/image" alt="screenshot" loading="lazy" />
-        <div class="shot-meta">{{ sh.captured_at }} · {{ sh.bytes }}b</div>
+        <div class="shot-meta">
+            <div>{{ sh.captured_at }}</div>
+            <div class="small">{{ sh.bytes }} bytes</div>
+        </div>
     </a>
     {% endfor %}
-    {% if screenshots.is_empty() %}
-    <p class="muted">Không có ảnh chụp trong phiên này.</p>
-    {% endif %}
 </div>
+{% endif %}
 {% endblock %}

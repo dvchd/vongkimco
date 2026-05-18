@@ -1,15 +1,35 @@
 {% extends "base.html" %}
 {% block title %}{{ viewing.email }} · Vòng Kim Cô{% endblock %}
 {% block content %}
-<h1>{{ viewing.email }}</h1>
-<p class="muted">{{ viewing.name }} · {% if viewing.is_admin %}<span class="badge admin">admin</span>{% endif %}</p>
-
-<div class="kpis">
-    <div class="kpi"><div class="kpi-value">{{ viewing.session_count }}</div><div class="kpi-label">Phiên</div></div>
-    <div class="kpi"><div class="kpi-value">{{ viewing.last_seen }}</div><div class="kpi-label">Phiên gần nhất</div></div>
+<div class="page-header">
+    <h1>{{ viewing.email }}</h1>
+    <p>
+        {{ viewing.name }}
+        {% if viewing.is_admin %} · <span class="badge admin">admin</span>{% endif %}
+    </p>
 </div>
 
-<h2>Lịch sử phiên</h2>
+<div class="kpis">
+    <div class="kpi info">
+        <div class="kpi-label">Số phiên</div>
+        <div class="kpi-value">{{ viewing.session_count }}</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Phiên gần nhất</div>
+        <div class="kpi-value" style="font-size: 14px;">{{ viewing.last_seen }}</div>
+    </div>
+</div>
+
+<div class="section-header">
+    <h2>Lịch sử phiên</h2>
+</div>
+{% if sessions.is_empty() %}
+    <div class="empty">
+        <div class="icon">📭</div>
+        <p>Người dùng này chưa có phiên nào.</p>
+    </div>
+{% else %}
+<div class="table-wrap">
 <table class="data">
     <thead>
         <tr><th>Bắt đầu</th><th>Kết thúc</th><th>Thời lượng</th><th>Ghi chú</th></tr>
@@ -25,4 +45,6 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
+{% endif %}
 {% endblock %}

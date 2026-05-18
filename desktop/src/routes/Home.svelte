@@ -45,80 +45,103 @@
     }
 
     function fmtDuration(iso: string | null): string {
-        if (!iso) return "—";
+        if (!iso) return "00:00:00";
         const start = new Date(iso).getTime();
         const now = Date.now();
-        const sec = Math.floor((now - start) / 1000);
+        const sec = Math.max(0, Math.floor((now - start) / 1000));
         const h = Math.floor(sec / 3600);
         const m = Math.floor((sec % 3600) / 60);
         const s = sec % 60;
-        if (h > 0) return `${h}h ${m}m ${s}s`;
-        if (m > 0) return `${m}m ${s}s`;
-        return `${s}s`;
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        return `${pad(h)}:${pad(m)}:${pad(s)}`;
     }
 
-    let elapsed = "—";
+    let elapsed = "00:00:00";
     onMount(() => {
+        elapsed = fmtDuration($sessionState.started_at);
         tick = setInterval(() => {
             elapsed = fmtDuration($sessionState.started_at);
         }, 1000);
     });
     onDestroy(() => clearInterval(tick));
+
+    $: statusText = !$sessionState.running
+        ? "Chưa bắt đầu"
+        : $sessionState.last_activity === "active"
+            ? "Đang hoạt động"
+            : "Idle";
+    $: statusClass = !$sessionState.running
+        ? ""
+        : $sessionState.last_activity === "active"
+            ? "active"
+            : "idle";
 </script>
 
 <h1>Phiên làm việc</h1>
-<p class="muted">Xin chào {$user?.name ?? $user?.email}. Bắt đầu phiên để hệ thống ghi nhận hoạt động của bạn.</p>
+<p>Xin chào <strong>{$user?.name ?? $user?.email}</strong>. Bắt đầu phiên để hệ thống ghi nhận hoạt động.</p>
 
 {#if error}
     <div class="banner error">{error}</div>
 {/if}
 
 <div class="card">
-    <div class="row" style="justify-content: space-between; align-items: flex-start;">
+    <div class="row between" style="align-items: flex-start;">
         <div>
-            <h2 style="margin: 0;">Trạng thái</h2>
+            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Trạng thái phiên</div>
             <div class="row" style="margin-top: 8px;">
-                {#if $sessionState.running}
-                    <span class="status-pill {$sessionState.last_activity}">
-                        <span class="dot"></span>
-                        {$sessionState.last_activity === "active" ? "Đang hoạt động" : "Idle"}
-                    </span>
-                {:else}
-                    <span class="status-pill">
-                        <span class="dot"></span> Chưa bắt đầu
-                    </span>
-                {/if}
-                <span class="status-pill {$sessionState.online ? '' : 'offline'}">
+                <span class="status-pill {statusClass}">
                     <span class="dot"></span>
-                    {$sessionState.online ? "Online" : "Offline"}
+                    {statusText}
+                </span>
+                <span class="status-pill {$sessionState.online ? 'online' : 'offline'}">
+                    <span class="dot"></span>
+                    {$sessionState.online ? "Đã kết nối" : "Offline"}
                 </span>
             </div>
         </div>
         <div style="text-align: right;">
-            <div style="font-size: 28px; font-weight: 700;">{elapsed}</div>
+            <div class="elapsed-display">{elapsed}</div>
             <div class="muted small">Thời gian phiên</div>
         </div>
     </div>
 
-    <div class="session-controls" style="margin-top: 18px;">
+    <div class="session-controls" style="margin-top: 20px;">
         {#if !$sessionState.running}
-            <input type="text" bind:value={note} placeholder="Ghi chú (tuỳ chọn)" style="max-width: 320px;" />
-            <button class="primary" on:click={start} disabled={busy}>Bắt đầu phiên</button>
+            <input type="text" bind:value={note} placeholder="Ghi chú (tuỳ chọn)" style="max-width: 320px; flex: 1;" />
+            <button class="primary" on:click={start} disabled={busy}>
+                {busy ? "Đang bắt đầu…" : "▶ Bắt đầu phiên"}
+            </button>
         {:else}
-            <button class="danger" on:click={stop} disabled={busy}>Kết thúc phiên</button>
-            <button on:click={syncNow} disabled={busy}>Đồng bộ ngay</button>
+            <button class="danger" on:click={stop} disabled={busy}>
+                {busy ? "Đang dừng…" : "■ Kết thúc phiên"}
+            </button>
+            <button on:click={syncNow} disabled={busy}>
+                {busy ? "Đang đồng bộ…" : "↻ Đồng bộ ngay"}
+            </button>
         {/if}
     </div>
 </div>
 
 <h2>Thống kê phiên</h2>
 <div class="kpis">
-    <div class="kpi"><div class="kpi-value">{$sessionState.keyboard_events}</div><div class="kpi-label">Sự kiện bàn phím</div></div>
-    <div class="kpi"><div class="kpi-value">{$sessionState.mouse_events}</div><div class="kpi-label">Sự kiện chuột</div></div>
-    <div class="kpi"><div class="kpi-value">{$sessionState.screenshots_taken}</div><div class="kpi-label">Ảnh chụp</div></div>
-    <div class="kpi"><div class="kpi-value">{$sessionState.pending_sync}</div><div class="kpi-label">Chờ đồng bộ</div></div>
+    <div class="kpi info">
+        <div class="kpi-label">Bàn phím</div>
+        <div class="kpi-value">{$sessionState.keyboard_events}</div>
+    </div>
+    <div class="kpi info">
+        <div class="kpi-label">Chuột</div>
+        <div class="kpi-value">{$sessionState.mouse_events}</div>
+    </div>
+    <div class="kpi ok">
+        <div class="kpi-label">Ảnh chụp</div>
+        <div class="kpi-value">{$sessionState.screenshots_taken}</div>
+    </div>
+    <div class="kpi {$sessionState.pending_sync > 0 ? 'warn' : ''}">
+        <div class="kpi-label">Chờ đồng bộ</div>
+        <div class="kpi-value">{$sessionState.pending_sync}</div>
+    </div>
 </div>
 
-<p class="muted small" style="margin-top: 16px;">
-    Phím tắt: <kbd>{$settings?.hotkey_start}</kbd> bắt đầu · <kbd>{$settings?.hotkey_stop}</kbd> dừng
+<p class="muted small" style="margin-top: 18px;">
+    Phím tắt: <kbd>{$settings?.hotkey_start ?? "—"}</kbd> bắt đầu · <kbd>{$settings?.hotkey_stop ?? "—"}</kbd> dừng
 </p>

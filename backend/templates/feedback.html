@@ -5,32 +5,37 @@
     {% if !is_member %}<a href="/pending">Xin làm thành viên</a>{% endif %}
     {% if is_admin %}<a href="/admin">Trang quản trị</a>{% endif %}
 {% endblock %}
+{% block user %}
+    <span class="role">
+        {% if is_admin %}Admin{% else if is_member %}Member{% else %}Guest{% endif %}
+    </span>
+    <span>{{ user_email }}</span>
+    <a href="/admin/logout" class="btn-ghost">Đăng xuất</a>
+{% endblock %}
 {% block content %}
-<h1>Gửi phản hồi</h1>
-<p class="muted">
-    Đăng bình luận, báo lỗi, hoặc đề xuất tính năng. Quản trị viên sẽ phản hồi
-    bạn trực tiếp tại đây.
-</p>
+<div class="page-header">
+    <h1>Gửi phản hồi</h1>
+    <p>Đăng bình luận, báo lỗi, hoặc đề xuất tính năng. Quản trị viên sẽ phản hồi bạn trực tiếp tại đây.</p>
+</div>
 
 {% if !is_member %}
-<div class="banner" style="border-left-color: var(--primary);">
+<div class="banner feature">
     <strong>👋 Bạn đang là khách.</strong> Bạn có thể gửi phản hồi tự do, nhưng
     để dùng được desktop app cần được phê duyệt làm thành viên.
     <a href="/pending" class="btn-primary" style="margin-left: 12px;">Xin làm thành viên</a>
 </div>
 {% endif %}
 
-<div class="banner">
-    <strong>Lưu ý:</strong> ô bình luận chỉ chấp nhận văn bản (để tránh nội dung
-    không phù hợp). Nếu cần gửi ảnh màn hình hoặc file, vui lòng liên hệ
-    <a href="{{ maintainer_facebook }}" target="_blank">Facebook</a>
-    hoặc email <a href="mailto:{{ maintainer_email }}">{{ maintainer_email }}</a>.
+<div class="banner info">
+    <strong>Lưu ý:</strong> ô bình luận chỉ chấp nhận văn bản (tránh nội dung không phù hợp). Nếu cần gửi ảnh hoặc file, liên hệ
+    <a href="{{ maintainer_facebook }}" target="_blank" rel="noopener">Facebook</a>
+    hoặc <a href="mailto:{{ maintainer_email }}">{{ maintainer_email }}</a>.
 </div>
 
 <div class="card">
     <form method="POST" action="/feedback">
-        <div class="row" style="gap: 12px;">
-            <div class="field" style="flex: 0 0 180px;">
+        <div class="row" style="gap: 12px; align-items: flex-end;">
+            <div class="field" style="flex: 0 0 200px; margin-bottom: 0;">
                 <label>Loại</label>
                 <select name="category">
                     <option value="comment">💬 Bình luận</option>
@@ -38,24 +43,34 @@
                     <option value="feature">✨ Đề xuất</option>
                 </select>
             </div>
-            <div class="field" style="flex: 1;">
+            <div class="field" style="flex: 1; margin-bottom: 0;">
                 <label>Tiêu đề (tuỳ chọn)</label>
                 <input type="text" name="title" maxlength="200" placeholder="Tóm tắt ngắn gọn" />
             </div>
         </div>
-        <div class="field">
+        <div class="field" style="margin-top: 12px;">
             <label>Nội dung</label>
             <textarea name="body" rows="6" maxlength="4000" required
                 placeholder="Mô tả chi tiết. Tối đa 4000 ký tự."></textarea>
+            <div class="hint">Tối đa 4000 ký tự · giới hạn 8 bài/giờ chống spam.</div>
         </div>
-        <button type="submit" class="btn-primary">Gửi</button>
+        <div class="row end">
+            <button type="submit" class="btn-primary">Gửi phản hồi</button>
+        </div>
     </form>
 </div>
 
-<h2>Bài viết của bạn</h2>
+<div class="section-header">
+    <h2>Bài viết của bạn</h2>
+    <span class="count">{{ posts.len() }} bài</span>
+</div>
 {% if posts.is_empty() %}
-    <p class="muted">Bạn chưa gửi phản hồi nào.</p>
+    <div class="empty">
+        <div class="icon">✍️</div>
+        <p>Bạn chưa gửi phản hồi nào.</p>
+    </div>
 {% else %}
+<div class="table-wrap">
 <table class="data">
     <thead>
         <tr><th>Loại</th><th>Tiêu đề / Trích đoạn</th><th>Trạng thái</th><th>Phản hồi</th><th>Gửi lúc</th></tr>
@@ -75,5 +90,6 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% endif %}
 {% endblock %}

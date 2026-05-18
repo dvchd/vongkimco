@@ -33,6 +33,10 @@ Triển khai chính thức: **https://vongkimco.hoctuthien.com**
 - **Tự khởi động cùng hệ thống** (tuỳ chọn, dùng plugin autostart của Tauri).
 - **Tự cập nhật** an toàn qua Tauri Updater + chữ ký Ed25519 (xem mục
   *Tự động cập nhật* bên dưới).
+- **UI dark, gọn**: sidebar có icon + active highlight, status pill có dot
+  pulse khi active, đồng hồ phiên monospace, KPI cards highlight theo
+  trạng thái, lịch sử có filter (tất cả / đã sync / chờ sync), và banner
+  cập nhật riêng cho download / install / error.
 
 ### Admin web (chung server)
 - Đăng nhập Google. Chỉ email trong allow-list (env `ADMIN_EMAILS`) mới vào được.
@@ -43,6 +47,8 @@ Triển khai chính thức: **https://vongkimco.hoctuthien.com**
 - **Quản lý thành viên**: thêm/gỡ email khỏi allow-list runtime tại `/admin/members`
   (bổ sung cho danh sách env `MEMBER_EMAILS`).
 - **Trả lời phản hồi** từ thành viên (đổi trạng thái: đang mở / đang xử lý / đã giải quyết / không xử lý).
+- **Giao diện dark mode** thống nhất, có active nav highlight, status badge
+  màu theo trạng thái, empty state cho mọi danh sách, layout responsive cho màn hình nhỏ.
 
 ### Member web (`/feedback`)
 - Đăng nhập Google. Bắt buộc email phải nằm trong allow-list member (env
@@ -253,6 +259,32 @@ npm run build            # vite production bundle
 
 Toàn bộ codebase hiện tại build & lint sạch warnings — bất kỳ warning nào xuất
 hiện trong PR đều cần được xử lý trước khi merge.
+
+---
+
+## 🎨 Hệ thiết kế UI
+
+Admin web (Askama) và desktop app (Svelte) dùng cùng một bộ design token
+trong [backend/static/admin.css](backend/static/admin.css) và
+[desktop/src/app.css](desktop/src/app.css):
+
+| Token | Giá trị | Mục đích |
+| --- | --- | --- |
+| `--bg` `#0f1115` / `--surface` `#161a22` | nền & card | dark mode mặc định |
+| `--primary` `#d4a017` | vàng kim cô | nút chính, active state, badge admin |
+| `--ok` `--warn` `--danger` `--info` | màu trạng thái | banner, badge, KPI accent |
+| `--radius` 8px, `--radius-lg` 12px | bo góc | card, button, input |
+
+Pattern UI dùng chung:
+- **Status badge** trong feedback / membership: class `badge status-<state>`
+  (open / in_progress / resolved / wontfix / pending / approved / rejected).
+- **Empty state**: `.empty` với icon + mô tả khi danh sách rỗng.
+- **Tabs / pills**: `.tabs > .tab.active` cho filter bar (vd. /admin/feedback).
+- **Status pill** desktop (`.status-pill.active|idle|offline|online`): có
+  dot pulse khi đang hoạt động để feedback rõ trạng thái real-time.
+- **Active nav** trên topbar admin: highlight được thêm client-side bằng
+  inline script trong `base.html` so khớp `pathname` với `href` — không
+  cần thêm field nào vào Askama struct.
 
 ---
 

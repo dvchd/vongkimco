@@ -8,17 +8,23 @@
 </head>
 <body class="centered">
 <div class="login-card">
-    <h1>⚙ Vòng Kim Cô</h1>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <span class="logo" style="width: 48px; height: 48px; background: var(--primary); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: #111; box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35), 0 0 16px rgba(212, 160, 23, 0.25);">⚙</span>
+        <h1 style="margin: 0;">Vòng Kim Cô</h1>
+    </div>
     <p class="muted">Hệ thống giám sát phiên làm việc trực tuyến.</p>
     {% match reason %}
     {% when Some with (r) %}
         {% if r == "device" %}
-            <div class="info">Đăng nhập để kích hoạt thiết bị desktop.</div>
+            <div class="banner info small" style="text-align: left;">Đăng nhập để kích hoạt thiết bị desktop.</div>
         {% endif %}
     {% when None %}
     {% endmatch %}
-    <a href="/admin/oauth/start" class="btn-primary">Đăng nhập bằng Google</a>
-    <p class="muted small">Chỉ tài khoản có trong danh sách quản trị mới truy cập được trang quản trị.</p>
+    <a href="/admin/oauth/start" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px 18px; margin-top: 12px;">Đăng nhập bằng Google</a>
+    <p class="muted small" style="margin-top: 18px;">
+        Chỉ tài khoản có trong danh sách quản trị mới truy cập được trang quản trị.
+        <br>Member có thể vào <a href="/feedback" style="color: var(--primary);">/feedback</a> để gửi báo lỗi/đề xuất.
+    </p>
 </div>
 </body>
 </html>

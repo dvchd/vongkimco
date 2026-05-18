@@ -1,16 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Tổng quan · Vòng Kim Cô{% endblock %}
 {% block content %}
-<h1>Tổng quan</h1>
-
-<div class="kpis">
-    <div class="kpi"><div class="kpi-value">{{ total_users }}</div><div class="kpi-label">Người dùng</div></div>
-    <div class="kpi"><div class="kpi-value">{{ total_sessions }}</div><div class="kpi-label">Phiên làm việc</div></div>
-    <div class="kpi"><div class="kpi-value">{{ active_sessions }}</div><div class="kpi-label">Đang hoạt động</div></div>
-    <div class="kpi"><div class="kpi-value">{{ total_screenshots }}</div><div class="kpi-label">Ảnh chụp</div></div>
+<div class="page-header">
+    <h1>Tổng quan</h1>
+    <p>Tình hình hoạt động trên server.</p>
 </div>
 
-<h2>Phiên gần đây</h2>
+<div class="kpis">
+    <div class="kpi info">
+        <div class="kpi-label">Người dùng</div>
+        <div class="kpi-value">{{ total_users }}</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Phiên làm việc</div>
+        <div class="kpi-value">{{ total_sessions }}</div>
+    </div>
+    <div class="kpi ok">
+        <div class="kpi-label">Đang hoạt động</div>
+        <div class="kpi-value">{{ active_sessions }}</div>
+    </div>
+    <div class="kpi warn">
+        <div class="kpi-label">Ảnh chụp</div>
+        <div class="kpi-value">{{ total_screenshots }}</div>
+    </div>
+</div>
+
+<div class="section-header">
+    <h2>Phiên gần đây</h2>
+</div>
+{% if recent_sessions.is_empty() %}
+    <div class="empty">
+        <div class="icon">📭</div>
+        <p>Chưa có phiên nào.</p>
+        <p class="small">Khi người dùng bắt đầu phiên trên desktop, chúng sẽ xuất hiện ở đây.</p>
+    </div>
+{% else %}
+<div class="table-wrap">
 <table class="data">
     <thead>
         <tr><th>Người dùng</th><th>Bắt đầu</th><th>Kết thúc</th><th>Thời lượng</th><th>Ghi chú</th></tr>
@@ -25,9 +50,8 @@
             <td class="muted">{{ s.note }}</td>
         </tr>
         {% endfor %}
-        {% if recent_sessions.is_empty() %}
-        <tr><td colspan="5" class="muted center">Chưa có phiên nào.</td></tr>
-        {% endif %}
     </tbody>
 </table>
+</div>
+{% endif %}
 {% endblock %}
