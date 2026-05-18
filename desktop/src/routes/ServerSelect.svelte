@@ -80,7 +80,7 @@
 
         <p class="muted small center">
             Bạn có thể đổi server bất kỳ lúc nào trong <strong>Cài đặt</strong>.<br>
-            Mã nguồn mở: <code>github.com/dvcuong-hust/vongkimco</code>
+            Mã nguồn mở: <code>github.com/dvchd/vongkimco</code>
         </p>
     </main>
 </div>

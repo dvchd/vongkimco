@@ -138,7 +138,7 @@
         </div>
 
         <p class="muted small center">
-            Mã nguồn mở: <code>github.com/dvcuong-hust/vongkimco</code>
+            Mã nguồn mở: <code>github.com/dvchd/vongkimco</code>
         </p>
     </main>
 </div>
