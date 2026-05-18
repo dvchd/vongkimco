@@ -9,7 +9,9 @@ use tower_http::services::ServeDir;
 use tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::SqliteStore;
 
-use crate::handlers::{admin, desktop_auth, device_api, feedback, health, membership, oauth};
+use crate::handlers::{
+    admin, auth_api, desktop_auth, device_api, feedback, health, membership, oauth,
+};
 use crate::state::AppState;
 
 pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
@@ -43,8 +45,10 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
     let api = Router::new()
         .route("/health", get(health::health))
         .route("/server-info", get(health::server_info))
-        .route("/device/link/start", post(desktop_auth::device_link_start))
-        .route("/device/link/poll", post(desktop_auth::device_link_poll))
+        .route("/auth/desktop/start", post(desktop_auth::start))
+        .route("/auth/desktop/poll/:flow_id", get(desktop_auth::poll))
+        .route("/auth/refresh", post(auth_api::refresh))
+        .route("/auth/verify", get(auth_api::verify))
         .route("/whoami", get(device_api::whoami))
         .route("/sessions", post(device_api::upsert_session))
         .route("/activity", post(device_api::ingest_activity))
@@ -83,10 +87,12 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .route("/:id", get(feedback::detail))
         .route("/:id/reply", post(feedback::reply_member));
 
-    let device_pages = Router::new().route(
-        "/activate",
-        get(desktop_auth::device_activate_page).post(desktop_auth::device_activate_submit),
-    );
+    // Browser-facing pages for the desktop login flow. /authorize is the
+    // landing URL the desktop app opens; /done is shown after successful
+    // login.
+    let auth_pages = Router::new()
+        .route("/desktop/authorize", get(desktop_auth::authorize))
+        .route("/desktop/done", get(desktop_auth::done));
 
     let root = Router::new()
         .route("/", get(feedback::home_redirect))
@@ -95,7 +101,7 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .nest("/api/v1", api)
         .nest("/admin", admin_routes)
         .nest("/feedback", feedback_routes)
-        .nest("/device", device_pages)
+        .nest("/auth", auth_pages)
         .nest_service("/static", ServeDir::new("./static"))
         .layer(session_layer)
         .layer(cors)

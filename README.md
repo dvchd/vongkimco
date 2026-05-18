@@ -21,7 +21,10 @@ Triển khai chính thức: **https://vongkimco.hoctuthien.com**
 ### Desktop App (đa nền tảng — Windows / macOS / Linux)
 - **Chọn server backend** ngay từ lần chạy đầu tiên (mặc định
   `https://vongkimco.hoctuthien.com`, có thể custom domain).
-- **Đăng nhập bằng Google** qua "device link" flow — mở browser, đăng nhập, paste mã.
+- **Đăng nhập bằng Google** qua *browser-OAuth + polling* flow — chỉ cần bấm nút,
+  ứng dụng mở trình duyệt hệ thống, bạn đăng nhập Google bình thường, app tự nhận
+  đăng nhập (không phải gõ mã tay). Refresh token lưu trong OS keyring (Windows
+  Credential Manager / macOS Keychain / Linux secret-service), không phải file phẳng.
 - **Bắt đầu / dừng phiên** bằng nút hoặc phím tắt toàn cục (cấu hình được).
 - **Chụp ảnh màn hình định kỳ** (mặc định 180s), nén JPEG ~50% chất lượng +
   resize ≤ 1280px để vừa đủ thấy đang làm gì mà không tốn băng thông.
@@ -43,7 +46,8 @@ Triển khai chính thức: **https://vongkimco.hoctuthien.com**
 - Tổng quan: số người dùng, số phiên, số ảnh chụp, phiên đang chạy.
 - Danh sách người dùng + chi tiết từng phiên.
 - Xem ảnh chụp màn hình.
-- Phê duyệt liên kết thiết bị desktop.
+- Phê duyệt thiết bị desktop tự động khi user đăng nhập (qua login flow), với
+  giới hạn số thiết bị mỗi user (env `DESKTOP_DEVICE_LIMIT`, mặc định 5).
 - **Quản lý thành viên**: thêm/gỡ email khỏi allow-list runtime tại `/admin/members`
   (bổ sung cho danh sách env `MEMBER_EMAILS`).
 - **Trả lời phản hồi** từ thành viên (đổi trạng thái: đang mở / đang xử lý / đã giải quyết / không xử lý).
@@ -82,7 +86,10 @@ Triển khai chính thức: **https://vongkimco.hoctuthien.com**
      MEMBER_EMAILS=
      GOOGLE_CLIENT_ID=...
      GOOGLE_CLIENT_SECRET=...
-     SESSION_SECRET=$(openssl rand -hex 32)
+     # HS256 ký JWT desktop. BẮT BUỘC — backend từ chối khởi động nếu rỗng/<32 ký tự.
+     JWT_SECRET=$(openssl rand -hex 32)
+     # Tuỳ chọn — giới hạn số thiết bị mỗi member, mặc định 5, 0 = vô hạn.
+     DESKTOP_DEVICE_LIMIT=5
      ```
    - Volume `vongkimco_data` sẽ lưu SQLite + thư mục ảnh chụp giữa các lần redeploy.
 
@@ -219,10 +226,18 @@ GitHub Release.
 
 1. **Chọn server** — mặc định `https://vongkimco.hoctuthien.com`. Có thể đổi
    sang server backend khác (ví dụ instance riêng của công ty).
-2. **Đăng nhập Google** — ứng dụng hiển thị mã `XXXX-XXXX` và mở trình duyệt.
-3. **Vào trang `/device/activate`** trên server, đăng nhập Google, paste mã,
-   bấm phê duyệt.
-4. Ứng dụng tự nhận token, lưu xuống đĩa, sẵn sàng bắt đầu phiên.
+2. **Đăng nhập bằng Google** — bấm nút, ứng dụng tự mở trình duyệt hệ thống và
+   trỏ tới `${PUBLIC_URL}/auth/desktop/authorize?flow_id=…`.
+   - **Fast path**: nếu bạn đã đăng nhập web admin/member trên trình duyệt từ
+     trước → server bỏ qua Google, chỉ cần 1 click confirm.
+   - **Slow path**: bạn đăng nhập Google như bình thường, browser redirect về
+     `/admin/oauth/callback` → server hoàn tất login flow, trang hiện "Đăng
+     nhập thành công, có thể đóng tab".
+3. Ứng dụng poll server mỗi 2 giây, nhận token (access + refresh) ngay khi
+   bạn vừa duyệt xong, lưu refresh token vào OS keyring và sẵn sàng dùng.
+
+Lưu ý: token không được lưu trên đĩa dưới dạng file phẳng. Truy cập refresh
+token cần quyền user hiện tại trên máy.
 
 ### Phím tắt mặc định
 - `Ctrl/Cmd + Alt + S` — bắt đầu phiên.
@@ -407,10 +422,29 @@ vui lòng liên hệ maintainer qua **Facebook** (`fb.com/dvcuong.hust`) hoặc
 
 - Backend chỉ chấp nhận login Google. Quyền admin lấy theo email allow-list
   ngay khi đăng nhập.
-- Desktop token: chuỗi 32-byte ngẫu nhiên, SHA-256 lưu DB (server không bao
-  giờ thấy raw token sau khi cấp).
-- Cookie session ký bằng SESSION_SECRET (HMAC-SHA512, SameSite=Lax,
-  Secure khi PUBLIC_URL là HTTPS).
+- **Desktop auth pipeline (production-tested pattern):**
+  - **Access token**: JWT HS256 ký bằng `JWT_SECRET`, TTL 1 giờ. Claims:
+    `{sub, did, tier, iat, exp, jti}`. Mỗi request `DeviceAuth` extractor
+    verify chữ ký, kiểm tra device chưa bị revoke, và recheck membership
+    runtime — admin revoke có hiệu lực ngay request tiếp theo.
+  - **Refresh token**: 32-byte random, SHA-256 lưu DB (server không bao giờ
+    thấy raw refresh token sau khi cấp). TTL 60 ngày. **Rotation strict**:
+    mỗi lần refresh, token cũ đánh dấu `rotated_at` và bị từ chối ngay.
+  - **Device fingerprint binding**: refresh chỉ valid khi
+    `device_fingerprint` request khớp với device row. Refresh token rò rỉ
+    sang máy khác không xài được.
+  - **One-shot token delivery**: server `UPDATE login_flows SET access_token
+    = NULL, refresh_token = NULL` ngay sau poll lần đầu thấy `completed` —
+    DB leak sau đó cũng không replay được token.
+  - **Browser hệ thống** chứ không embed WebView: user thấy URL Google
+    thật, tránh phishing in-app; không cần đóng gói Chromium.
+  - **Refresh token storage**: OS keyring (Windows Credential Manager,
+    macOS Keychain, Linux Secret Service) — chưa bao giờ chạm đĩa dưới
+    dạng file phẳng.
+- Cookie session (admin web) chỉ chứa session ID ngẫu nhiên do
+  `tower-sessions` cấp; dữ liệu session lưu server-side trong SQLite, nên
+  không cần khoá ký cookie. Cookie `SameSite=Lax`, `Secure` khi `PUBLIC_URL`
+  là HTTPS.
 - Ảnh chụp lưu trong volume riêng, chỉ admin xác thực mới đọc qua
   `/admin/screenshots/:id/image`.
 - Mọi component đều mã nguồn mở (MIT) — soi được toàn bộ pipeline.
@@ -423,13 +457,20 @@ vui lòng liên hệ maintainer qua **Facebook** (`fb.com/dvcuong.hust`) hoặc
 | --- | --- | --- | --- |
 | `GET`  | `/api/v1/health` | — | Health check |
 | `GET`  | `/api/v1/server-info` | — | Tên server + API version |
-| `POST` | `/api/v1/device/link/start` | — | Khởi tạo device-link, trả `device_code` + `user_code` + `verification_url` |
-| `POST` | `/api/v1/device/link/poll` | — | Poll, nếu approved → trả bearer token |
-| `GET`  | `/api/v1/whoami` | Bearer | Trả user của token |
+| `POST` | `/api/v1/auth/desktop/start` | — | Khởi tạo login flow, trả `flow_id` + `auth_url` (URL mở trình duyệt) |
+| `GET`  | `/auth/desktop/authorize?flow_id=…` | (cookie) | Trang trung gian: fast-path web session hoặc redirect Google OAuth |
+| `GET`  | `/auth/desktop/done` | — | Trang HTML "Đăng nhập thành công" hiển thị sau khi login |
+| `GET`  | `/api/v1/auth/desktop/poll/:flow_id` | — | Poll status. `completed` → trả `access_token + refresh_token + user + subscription` **đúng 1 lần** rồi server tự clear |
+| `POST` | `/api/v1/auth/refresh` | — | Body `{refresh_token, device_fingerprint}` → cấp access mới, rotate refresh. 401 = client phải xoá keyring |
+| `GET`  | `/api/v1/auth/verify` | Bearer | Trả `{valid, user, subscription}` để client xác nhận access token còn dùng được |
+| `GET`  | `/api/v1/whoami` | Bearer | Trả user của token (legacy alias của `/auth/verify`) |
 | `POST` | `/api/v1/sessions` | Bearer | Tạo/cập nhật phiên (idempotent theo `client_session_id`) |
 | `POST` | `/api/v1/activity` | Bearer | Batch upload activity samples |
 | `POST` | `/api/v1/app-snapshots` | Bearer | Batch upload app snapshots |
 | `POST` | `/api/v1/screenshots` | Bearer | Multipart upload 1 ảnh JPEG |
+
+`Bearer` = JWT HS256 access token (claims `sub`, `did`, `tier`, `iat`, `exp`, `jti`).
+TTL 1 giờ — desktop client tự refresh khi còn <5 phút.
 
 ---
 

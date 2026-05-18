@@ -6,6 +6,9 @@ mod models;
 mod routes;
 mod state;
 
+#[cfg(test)]
+mod tests;
+
 use std::net::SocketAddr;
 use std::sync::Arc;
 

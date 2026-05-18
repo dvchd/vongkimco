@@ -49,6 +49,16 @@ log = "0.4"
 env_logger = "0.11"
 dirs = "5"
 urlencoding = "2"
+sha2 = "0.10"
+hex = "0.4"
+rand = "0.8"
+
+# Secure refresh-token storage in OS keyring (Windows Credential Manager,
+# macOS Keychain, Linux Secret Service).
+keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
+
+# Stable, per-machine identifier used as a fingerprint seed.
+machine-uid = "0.5"
 
 # Screenshots
 xcap = "0.0.13"

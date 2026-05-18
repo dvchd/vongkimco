@@ -6,6 +6,7 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::auth::PendingLogin;
 use crate::db::LocalDb;
 use crate::settings::Settings;
 
@@ -46,11 +47,14 @@ impl SessionState {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct PendingLinkRequest {
-    pub device_code: String,
-    pub user_code: String,
-    pub verification_url: String,
+/// Auth state held entirely in memory. The refresh token (the bit that
+/// matters for re-login) lives in the OS keyring, never in this struct.
+#[derive(Clone, Debug, Default)]
+pub struct AuthStore {
+    pub access_token: Option<String>,
+    /// Unix-seconds when `access_token` stops being valid. 0 if no token.
+    pub access_expires_at: i64,
+    pub user: Option<UserInfo>,
 }
 
 /// In-memory cross-cutting application state. Wrap in Arc<...> for cheap cloning.
@@ -63,13 +67,7 @@ pub struct AppState {
     pub settings: Arc<RwLock<Settings>>,
     pub auth: Arc<RwLock<AuthStore>>,
     pub session: Arc<RwLock<SessionState>>,
-    pub pending_link: Arc<RwLock<Option<PendingLinkRequest>>>,
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct AuthStore {
-    pub token: Option<String>,
-    pub user: Option<UserInfo>,
+    pub pending_login: Arc<RwLock<Option<PendingLogin>>>,
 }
 
 impl AppState {
@@ -92,12 +90,8 @@ impl AppState {
             settings: Arc::new(RwLock::new(Settings::default())),
             auth: Arc::new(RwLock::new(AuthStore::default())),
             session: Arc::new(RwLock::new(SessionState::initial())),
-            pending_link: Arc::new(RwLock::new(None)),
+            pending_login: Arc::new(RwLock::new(None)),
         }
-    }
-
-    pub fn auth_token(&self) -> Option<String> {
-        self.auth.read().token.clone()
     }
 
     pub fn server_url(&self) -> String {
@@ -106,7 +100,7 @@ impl AppState {
 }
 
 pub async fn boot(state: &AppState) -> Result<()> {
-    // Load persisted settings
+    // Load persisted settings.
     let cfg_path = state.data_dir.join("settings.json");
     if cfg_path.exists() {
         let txt = tokio::fs::read_to_string(&cfg_path)
@@ -117,18 +111,18 @@ pub async fn boot(state: &AppState) -> Result<()> {
         }
     }
 
-    // Load persisted auth (raw on disk; ok for desktop usage on user's machine)
-    let auth_path = state.data_dir.join("auth.json");
-    if auth_path.exists() {
-        let txt = tokio::fs::read_to_string(&auth_path)
-            .await
-            .context("read auth")?;
-        if let Ok(a) = serde_json::from_str::<AuthStore>(&txt) {
-            *state.auth.write() = a;
-        }
+    // Best-effort migration: nuke the old plain-text auth.json so leftover
+    // tokens from the previous device-code build can't be picked up.
+    let legacy_auth = state.data_dir.join("auth.json");
+    if legacy_auth.exists() {
+        let _ = tokio::fs::remove_file(&legacy_auth).await;
     }
 
-    // Start background loops
+    // Try to restore login from the keyring. Network failures here don't
+    // count as logout — we keep the refresh token and try again later.
+    let _ = crate::auth::try_restore_session(state).await;
+
+    // Start background loops.
     crate::monitor::start_monitors(state.clone()).await;
     crate::sync::start_sync_loop(state.clone()).await;
     crate::monitor::register_hotkeys(state.clone()).await;
@@ -140,13 +134,6 @@ pub async fn save_settings_to_disk(state: &AppState) -> Result<()> {
     let s = state.settings.read().clone();
     let txt = serde_json::to_string_pretty(&s)?;
     tokio::fs::write(state.data_dir.join("settings.json"), txt).await?;
-    Ok(())
-}
-
-pub async fn save_auth_to_disk(state: &AppState) -> Result<()> {
-    let a = state.auth.read().clone();
-    let txt = serde_json::to_string_pretty(&a)?;
-    tokio::fs::write(state.data_dir.join("auth.json"), txt).await?;
     Ok(())
 }
 

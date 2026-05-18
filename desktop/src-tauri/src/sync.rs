@@ -53,19 +53,33 @@ type AppSnapshotItem = (
 pub async fn start_sync_loop(state: AppState) {
     tokio::spawn(async move {
         loop {
-            let token = state.auth_token();
             let online_before = state.session.read().online;
-            if let Some(token) = token {
-                let server = state.server_url();
-                match sync_once(&state, &server, &token).await {
-                    Ok(_) => {
-                        if !online_before {
-                            state.session.write().online = true;
-                            emit_status(&state);
+            let logged_in = state.auth.read().user.is_some();
+            if logged_in {
+                match crate::auth::ensure_fresh_token(&state).await {
+                    Ok(token) => {
+                        let server = state.server_url();
+                        match sync_once(&state, &server, &token).await {
+                            Ok(_) => {
+                                if !online_before {
+                                    state.session.write().online = true;
+                                    emit_status(&state);
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!("sync failed: {e:?}");
+                                if online_before {
+                                    state.session.write().online = false;
+                                    emit_status(&state);
+                                }
+                            }
                         }
                     }
                     Err(e) => {
-                        log::warn!("sync failed: {e:?}");
+                        // ensure_fresh_token failures don't get logged as
+                        // "sync failed" because they're a different kind of
+                        // problem (auth, not data). Just mark offline.
+                        log::warn!("token refresh failed: {e:?}");
                         if online_before {
                             state.session.write().online = false;
                             emit_status(&state);

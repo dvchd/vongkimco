@@ -21,20 +21,6 @@ pub struct LoginTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "activate.html")]
-pub struct ActivateTemplate {
-    pub code: String,
-    pub user_email: String,
-    pub error: Option<String>,
-}
-
-#[derive(Template)]
-#[template(path = "activate_done.html")]
-pub struct ActivateDoneTemplate {
-    pub user_email: String,
-}
-
-#[derive(Template)]
 #[template(path = "dashboard.html")]
 pub struct DashboardTemplate {
     pub user_email: String,

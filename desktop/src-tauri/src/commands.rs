@@ -1,13 +1,12 @@
 use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 use tauri::State;
 
+use crate::auth::{self, PollOutcome, StartLoginResp};
 use crate::db::LocalSession;
 use crate::settings::Settings;
-use crate::state::{
-    emit_status, save_auth_to_disk, save_settings_to_disk, AppState, PendingLinkRequest, UserInfo,
-};
+use crate::state::{emit_status, save_settings_to_disk, AppState, UserInfo};
 
 type CmdResult<T> = std::result::Result<T, String>;
 
@@ -73,89 +72,41 @@ pub async fn test_server(url: String) -> CmdResult<Value> {
     Ok(j)
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct DeviceLinkStartResp {
-    pub user_code: String,
-    pub verification_url: String,
-}
+// ---------- Auth commands ----------
 
 #[tauri::command]
-pub async fn device_link_start(state: State<'_, AppState>) -> CmdResult<DeviceLinkStartResp> {
-    let server = state.server_url();
-    let hostname = hostname_or_default();
-    let platform = std::env::consts::OS.to_string();
-
-    let body = serde_json::json!({ "device_name": hostname, "platform": platform });
-    let client = reqwest::Client::new();
-    let resp = client
-        .post(format!(
-            "{}/api/v1/device/link/start",
-            server.trim_end_matches('/')
-        ))
-        .json(&body)
-        .send()
-        .await
-        .map_err(err)?;
-    if !resp.status().is_success() {
-        return Err(format!("HTTP {}", resp.status()));
-    }
-    let j: Value = resp.json().await.map_err(err)?;
-    let device_code = j["device_code"].as_str().unwrap_or("").to_string();
-    let user_code = j["user_code"].as_str().unwrap_or("").to_string();
-    let verification_url = j["verification_url"].as_str().unwrap_or("").to_string();
-
-    *state.pending_link.write() = Some(PendingLinkRequest {
-        device_code: device_code.clone(),
-        user_code: user_code.clone(),
-        verification_url: verification_url.clone(),
-    });
-
-    Ok(DeviceLinkStartResp {
-        user_code,
-        verification_url,
-    })
+pub async fn auth_start(state: State<'_, AppState>) -> CmdResult<StartLoginResp> {
+    auth::start_login(&state).await.map_err(err)
 }
 
+/// Poll the server for the desktop flow's status. Returns one of:
+///   { status: "pending" }
+///   { status: "expired" }
+///   { status: "device_limit_exceeded" }
+///   { status: "not_member" }
+///   { status: "completed", user: {...} }   // tokens are stashed server-side
 #[tauri::command]
-pub async fn device_link_poll(state: State<'_, AppState>) -> CmdResult<Value> {
-    let server = state.server_url();
-    let pending = state.pending_link.read().clone();
-    let Some(p) = pending else {
-        return Err("no pending link".into());
-    };
-
-    let client = reqwest::Client::new();
-    let resp = client
-        .post(format!(
-            "{}/api/v1/device/link/poll",
-            server.trim_end_matches('/')
-        ))
-        .json(&serde_json::json!({ "device_code": p.device_code }))
-        .send()
-        .await
-        .map_err(err)?;
-    if !resp.status().is_success() {
-        return Err(format!("HTTP {}", resp.status()));
-    }
-    let j: Value = resp.json().await.map_err(err)?;
-    let status = j["status"].as_str().unwrap_or("pending").to_string();
-
-    if status == "approved" {
-        let token = j["token"].as_str().unwrap_or("").to_string();
-        let user = j.get("user").cloned().unwrap_or(Value::Null);
-        let user_info: Option<UserInfo> = serde_json::from_value(user).ok();
-        {
-            let mut a = state.auth.write();
-            a.token = Some(token);
-            a.user = user_info;
+pub async fn auth_poll(state: State<'_, AppState>) -> CmdResult<Value> {
+    let outcome = auth::poll_login(&state).await.map_err(err)?;
+    let v = match outcome {
+        PollOutcome::Pending => serde_json::json!({ "status": "pending" }),
+        PollOutcome::Expired => serde_json::json!({ "status": "expired" }),
+        PollOutcome::DeviceLimitExceeded => {
+            serde_json::json!({ "status": "device_limit_exceeded" })
         }
-        save_auth_to_disk(&state).await.map_err(err)?;
-        *state.pending_link.write() = None;
-    } else if status == "expired" {
-        *state.pending_link.write() = None;
-    }
+        PollOutcome::NotMember => serde_json::json!({ "status": "not_member" }),
+        PollOutcome::Completed { user, .. } => serde_json::json!({
+            "status": "completed",
+            "user": user,
+        }),
+    };
+    Ok(v)
+}
 
-    Ok(j)
+#[tauri::command]
+pub async fn auth_cancel(state: State<'_, AppState>) -> CmdResult<()> {
+    auth::cancel_login(&state);
+    Ok(())
 }
 
 #[tauri::command]
@@ -167,10 +118,11 @@ pub async fn get_current_user(state: State<'_, AppState>) -> CmdResult<Option<Us
 pub async fn logout(state: State<'_, AppState>) -> CmdResult<()> {
     // Stop any running session
     let _ = do_stop_session(&state).await;
-    *state.auth.write() = Default::default();
-    save_auth_to_disk(&state).await.map_err(err)?;
+    auth::logout(&state).await.map_err(err)?;
     Ok(())
 }
+
+// ---------- Session commands ----------
 
 #[tauri::command]
 pub async fn start_session(state: State<'_, AppState>, note: Option<String>) -> CmdResult<String> {
@@ -242,7 +194,7 @@ pub async fn do_stop_session(state: &AppState) -> Result<()> {
 
 #[tauri::command]
 pub async fn sync_now(state: State<'_, AppState>) -> CmdResult<()> {
-    let token = state.auth_token().ok_or("not logged in".to_string())?;
+    let token = auth::ensure_fresh_token(&state).await.map_err(err)?;
     let server = state.server_url();
     crate::sync::sync_once(&state, &server, &token)
         .await
@@ -264,12 +216,23 @@ pub async fn list_local_sessions(state: State<'_, AppState>) -> CmdResult<Vec<Lo
     state.db.list_sessions(200).map_err(err)
 }
 
-fn hostname_or_default() -> String {
-    if let Ok(h) = std::env::var("COMPUTERNAME") {
-        return h;
-    }
-    if let Ok(h) = std::env::var("HOSTNAME") {
-        return h;
-    }
-    "desktop".to_string()
+/// Exposed so the UI can show the fingerprint on a "Devices" / debug page
+/// if we ever want to. Useful for sanity-checking machine binding.
+#[tauri::command]
+pub async fn get_device_fingerprint() -> CmdResult<String> {
+    Ok(auth::device_fingerprint())
+}
+
+#[derive(Serialize)]
+pub struct AuthStatus {
+    pub user: Option<UserInfo>,
+    pub has_refresh_token: bool,
+}
+
+#[tauri::command]
+pub async fn get_auth_status(state: State<'_, AppState>) -> CmdResult<AuthStatus> {
+    Ok(AuthStatus {
+        user: state.auth.read().user.clone(),
+        has_refresh_token: auth::load_refresh_token().is_some(),
+    })
 }

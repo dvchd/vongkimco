@@ -6,60 +6,85 @@
 
     const dispatch = createEventDispatcher<{ done: void; "change-server": void }>();
 
+    type StartResp = { flow_id: string; auth_url: string };
+
     let starting = false;
-    let userCode: string | null = null;
-    let verificationUrl: string | null = null;
-    let polling = false;
+    let waiting = false;
+    let authUrl: string | null = null;
     let error: string | null = null;
     let pollTimer: any = null;
+    let attempts = 0;
+
+    /// 2 seconds between polls, 120 attempts → 4 minutes total. The flow
+    /// itself expires after 8 minutes server-side, but the user is unlikely
+    /// to still be staring at the app if they didn't approve in 4.
+    const POLL_INTERVAL_MS = 2000;
+    const POLL_MAX_ATTEMPTS = 120;
 
     async function startLink() {
         starting = true;
         error = null;
         try {
-            const res = await invoke<any>("device_link_start");
-            userCode = res.user_code;
-            verificationUrl = res.verification_url;
-            await openUrl(res.verification_url);
-            polling = true;
-            pollTimer = setInterval(poll, 3000);
+            const res = await invoke<StartResp>("auth_start");
+            authUrl = res.auth_url;
+            await openUrl(res.auth_url);
+            waiting = true;
+            attempts = 0;
+            pollTimer = setInterval(poll, POLL_INTERVAL_MS);
         } catch (e: any) {
-            error = e?.toString?.() ?? "Lỗi";
+            error = e?.toString?.() ?? "Lỗi khi khởi tạo đăng nhập";
         }
         starting = false;
     }
 
     async function poll() {
+        attempts += 1;
+        if (attempts > POLL_MAX_ATTEMPTS) {
+            stopPolling();
+            error = "Hết thời gian chờ. Vui lòng thử lại.";
+            return;
+        }
         try {
-            const res = await invoke<any>("device_link_poll");
-            if (res.status === "approved") {
-                clearInterval(pollTimer);
-                pollTimer = null;
-                polling = false;
+            const res = await invoke<any>("auth_poll");
+            if (res.status === "completed") {
+                stopPolling();
                 await loadUser();
                 dispatch("done");
             } else if (res.status === "expired") {
-                clearInterval(pollTimer);
-                pollTimer = null;
-                polling = false;
-                error = "Mã đã hết hạn. Vui lòng thử lại.";
-                userCode = null;
+                stopPolling();
+                error = "Phiên đăng nhập đã hết hạn. Vui lòng thử lại.";
+            } else if (res.status === "device_limit_exceeded") {
+                stopPolling();
+                error =
+                    "Bạn đã đạt giới hạn số thiết bị. Hãy gỡ một thiết bị cũ trong trang quản trị rồi thử lại.";
+            } else if (res.status === "not_member") {
+                stopPolling();
+                error =
+                    "Tài khoản của bạn chưa được duyệt làm thành viên. Vui lòng đăng ký yêu cầu thành viên trên web và liên hệ quản trị viên.";
             }
+            // status === "pending" → keep polling silently
         } catch (e: any) {
-            // keep polling unless fatal
+            // Network error: keep polling. The server may be slow or offline
+            // momentarily; the periodic retry handles transient blips.
         }
     }
 
-    function reopen() {
-        if (verificationUrl) openUrl(verificationUrl);
-    }
-
-    function cancel() {
+    function stopPolling() {
         if (pollTimer) clearInterval(pollTimer);
         pollTimer = null;
-        polling = false;
-        userCode = null;
-        verificationUrl = null;
+        waiting = false;
+    }
+
+    function reopen() {
+        if (authUrl) openUrl(authUrl);
+    }
+
+    async function cancel() {
+        stopPolling();
+        authUrl = null;
+        try {
+            await invoke("auth_cancel");
+        } catch {}
     }
 
     onDestroy(() => {
@@ -85,24 +110,25 @@
                 <button class="ghost small" on:click={() => dispatch("change-server")}>Đổi server</button>
             </div>
 
-            {#if !userCode}
+            {#if !waiting}
                 <button class="primary" on:click={startLink} disabled={starting} style="width: 100%; padding: 12px;">
-                    {starting ? "Đang khởi tạo…" : "Đăng nhập bằng Google"}
+                    {starting ? "Đang mở trình duyệt…" : "Đăng nhập bằng Google"}
                 </button>
                 <p class="muted small" style="margin: 12px 0 0;">
-                    Trình duyệt sẽ mở ra. Đăng nhập Google rồi nhập mã hiển thị tại đây để liên kết thiết bị này.
+                    Trình duyệt sẽ mở ra. Đăng nhập Google trên trình duyệt và quay lại — ứng dụng sẽ tự nhận diện đăng nhập.
                 </p>
             {:else}
-                <p style="margin: 0 0 4px;">Nhập mã sau trên trình duyệt:</p>
-                <div class="code-box">{userCode}</div>
-                <div class="row between">
+                <div class="row" style="align-items: center; gap: 12px;">
                     <span class="status-pill idle">
-                        <span class="dot"></span> Đang chờ phê duyệt…
+                        <span class="dot"></span> Đang chờ đăng nhập…
                     </span>
-                    <div class="row" style="gap: 8px;">
-                        <button on:click={reopen}>Mở lại trình duyệt</button>
-                        <button class="ghost" on:click={cancel}>Huỷ</button>
-                    </div>
+                </div>
+                <p class="muted small" style="margin: 12px 0;">
+                    Nếu trình duyệt chưa mở hoặc đã đóng, hãy bấm <em>Mở lại trình duyệt</em>.
+                </p>
+                <div class="row" style="gap: 8px;">
+                    <button on:click={reopen}>Mở lại trình duyệt</button>
+                    <button class="ghost" on:click={cancel}>Huỷ</button>
                 </div>
             {/if}
 

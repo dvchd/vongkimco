@@ -1,3 +1,4 @@
+mod auth;
 mod commands;
 mod db;
 mod monitor;
@@ -32,7 +33,9 @@ pub fn run() {
             let app_state = state::AppState::new(handle.clone());
             app.manage(app_state.clone());
 
-            // Boot: load settings + persisted auth + start background tasks
+            // Boot: load settings, try to restore session from keyring, and
+            // start background tasks. try_restore_session is awaited inside
+            // boot() so the UI sees the rehydrated user as soon as it asks.
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = state::boot(&app_state).await {
                     log::error!("boot error: {e:?}");
@@ -45,9 +48,12 @@ pub fn run() {
             commands::save_settings,
             commands::set_server_url,
             commands::test_server,
-            commands::device_link_start,
-            commands::device_link_poll,
+            commands::auth_start,
+            commands::auth_poll,
+            commands::auth_cancel,
             commands::get_current_user,
+            commands::get_auth_status,
+            commands::get_device_fingerprint,
             commands::logout,
             commands::start_session,
             commands::stop_session,

@@ -29,7 +29,11 @@ services:
             MAINTAINER_EMAIL: ${MAINTAINER_EMAIL:-dvcuong.hust@gmail.com}
             GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
             GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-            SESSION_SECRET: ${SESSION_SECRET}
+            # HS256 signing key for desktop access-token JWTs. REQUIRED —
+            # backend refuses to start if missing or <32 chars.
+            JWT_SECRET: ${JWT_SECRET}
+            # Max paired devices per non-admin user (admins unlimited).
+            DESKTOP_DEVICE_LIMIT: ${DESKTOP_DEVICE_LIMIT:-5}
             RUST_LOG: ${RUST_LOG:-info,sqlx=warn,tower_http=info}
         volumes:
             - vongkimco_data:/data

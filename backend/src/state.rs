@@ -10,8 +10,11 @@ pub struct Config {
     pub public_url: String,
     pub google_client_id: String,
     pub google_client_secret: String,
-    #[allow(dead_code)]
-    pub session_secret: String,
+    /// HS256 signing key for desktop access-token JWTs. Required.
+    pub jwt_secret: String,
+    /// Max number of active devices a non-admin user may pair. Admins are
+    /// unlimited. 0 means "no limit for members either".
+    pub desktop_device_limit: u32,
     pub admin_emails: Vec<String>,
     pub member_emails: Vec<String>,
     pub screenshot_dir: PathBuf,
@@ -31,8 +34,17 @@ impl Config {
             .unwrap_or_else(|_| "https://vongkimco.hoctuthien.com".to_string());
         let google_client_id = env::var("GOOGLE_CLIENT_ID").unwrap_or_default();
         let google_client_secret = env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default();
-        let session_secret = env::var("SESSION_SECRET")
-            .unwrap_or_else(|_| "change-me-in-production-please-32bytes!".to_string());
+        let jwt_secret = env::var("JWT_SECRET").unwrap_or_default();
+        if jwt_secret.len() < 32 {
+            anyhow::bail!(
+                "JWT_SECRET must be set to a random string of at least 32 chars. \
+                 Generate one with `openssl rand -hex 32` and add it to your .env."
+            );
+        }
+        let desktop_device_limit = env::var("DESKTOP_DEVICE_LIMIT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(5u32);
         let admin_emails: Vec<String> = env::var("ADMIN_EMAILS")
             .unwrap_or_default()
             .split(',')
@@ -63,7 +75,8 @@ impl Config {
             public_url,
             google_client_id,
             google_client_secret,
-            session_secret,
+            jwt_secret,
+            desktop_device_limit,
             admin_emails,
             member_emails,
             screenshot_dir,

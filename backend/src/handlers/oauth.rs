@@ -1,7 +1,10 @@
-//! Google OAuth flow used by the admin web UI.
+//! Google OAuth callback shared by the admin web UI and the desktop login
+//! flow. The two flows are differentiated by `state`:
 //!
-//! The desktop app uses a separate "device link" flow (see desktop_auth.rs)
-//! so it does not need a browser dependency on the admin URL.
+//! - If `state` matches a pending row in `login_flows` → desktop flow:
+//!   complete it, redirect the browser to `/auth/desktop/done`.
+//! - Otherwise → web admin flow: require `session.oauth_state` match,
+//!   set the session cookie, redirect to a role-aware landing page.
 
 use std::sync::Arc;
 
@@ -12,6 +15,7 @@ use tower_sessions::Session;
 
 use crate::auth::{ensure_user_from_google, SESSION_USER_KEY};
 use crate::error::{AppError, AppResult};
+use crate::handlers::desktop_auth::complete_desktop_flow_if_match;
 use crate::state::AppState;
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -83,12 +87,31 @@ pub async fn admin_oauth_callback(
     let Some(code) = q.code else {
         return Err(AppError::BadRequest("missing code".into()));
     };
-    let saved_state: Option<String> = session.get("oauth_state").await.ok().flatten();
-    if saved_state != q.state {
-        return Err(AppError::BadRequest("state mismatch".into()));
-    }
-    let _ = session.remove::<String>("oauth_state").await;
+    let Some(qstate) = q.state.clone() else {
+        return Err(AppError::BadRequest("missing state".into()));
+    };
 
+    // Is this a desktop-flow callback? Check before we touch the session
+    // cookie state, because desktop flows are stateless from the browser's
+    // perspective (the user might be in a fresh incognito window).
+    let desktop_flow_match: bool = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM login_flows WHERE state = ? AND status = 'pending'",
+    )
+    .bind(&qstate)
+    .fetch_one(&state.db)
+    .await?
+        > 0;
+
+    if !desktop_flow_match {
+        // Web admin flow — enforce the session-tied CSRF token.
+        let saved_state: Option<String> = session.get("oauth_state").await.ok().flatten();
+        if saved_state.as_deref() != Some(qstate.as_str()) {
+            return Err(AppError::BadRequest("state mismatch".into()));
+        }
+        let _ = session.remove::<String>("oauth_state").await;
+    }
+
+    // Exchange code → user info. Same for both flows.
     let client = reqwest::Client::new();
     let redirect_uri = admin_redirect_uri(&state);
     let resp = client
@@ -129,20 +152,20 @@ pub async fn admin_oauth_callback(
 
     let _ = tok.id_token; // not needed; we used the userinfo endpoint
 
+    if desktop_flow_match {
+        let outcome = complete_desktop_flow_if_match(&state, &qstate, &user).await?;
+        if outcome.matched {
+            return Ok(Redirect::to("/auth/desktop/done").into_response());
+        }
+        // Race: the flow expired between the COUNT and the completion. Fall
+        // through to the web-flow branch so the user isn't stranded.
+    }
+
     session
         .insert(SESSION_USER_KEY, user.id.clone())
         .await
         .map_err(|e| AppError::Internal(format!("session: {e}")))?;
 
-    // If user came here from a device-link prompt, send them back to it.
-    let pending: Option<String> = session.get("pending_device_code").await.ok().flatten();
-    if let Some(code) = pending {
-        let _ = session.remove::<String>("pending_device_code").await;
-        let encoded: String = url::form_urlencoded::byte_serialize(code.as_bytes()).collect();
-        return Ok(Redirect::to(&format!("/device/activate?code={}", encoded)).into_response());
-    }
-
-    // Role-aware landing page.
     let dest = if user.is_admin_bool() {
         "/admin"
     } else if user.is_member_bool() {
