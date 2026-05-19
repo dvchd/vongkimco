@@ -6,15 +6,24 @@
         saveSettings,
         policy,
         refreshPolicy,
+        applyTheme,
+        type ThemePref,
     } from "../lib/stores";
     import { updateState, checkForUpdate, downloadAndInstall } from "../lib/updater";
     import { onMount } from "svelte";
 
     let local = { ...($settings ?? {} as any) };
+    if (!local.theme) local.theme = "auto";
     let saved = false;
     let error: string | null = null;
     let appVersion = "";
     let policyRefreshing = false;
+
+    function pickTheme(t: ThemePref) {
+        local.theme = t;
+        // Apply immediately for live preview; saveSettings() persists.
+        applyTheme(t);
+    }
 
     onMount(async () => {
         try { appVersion = await getVersion(); } catch {}
@@ -57,6 +66,25 @@
 
 {#if saved}<div class="banner ok">✓ Đã lưu cài đặt</div>{/if}
 {#if error}<div class="banner error">{error}</div>{/if}
+
+<div class="card">
+    <h2 style="margin-top: 0;">🎨 Giao diện</h2>
+    <div class="theme-picker" role="group" aria-label="Chế độ giao diện">
+        <button type="button" class:active={local.theme === "auto"} on:click={() => pickTheme("auto")}>
+            🖥 Theo hệ thống
+        </button>
+        <button type="button" class:active={local.theme === "light"} on:click={() => pickTheme("light")}>
+            ☀ Sáng
+        </button>
+        <button type="button" class:active={local.theme === "dark"} on:click={() => pickTheme("dark")}>
+            🌙 Tối
+        </button>
+    </div>
+    <p class="muted small" style="margin: 10px 0 0;">
+        "Theo hệ thống" sẽ tự đổi sáng / tối theo thiết lập của Windows · macOS · Linux.
+        Bấm <strong>Lưu cài đặt</strong> để ghi nhớ cho lần mở tiếp theo.
+    </p>
+</div>
 
 <div class="card">
     <h2 style="margin-top: 0;">🌐 Server</h2>

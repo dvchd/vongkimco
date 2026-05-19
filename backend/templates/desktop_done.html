@@ -4,6 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Đăng nhập thành công · Vòng Kim Cô</title>
+    <script>
+        (function () {
+            try {
+                var pref = localStorage.getItem("vkc_theme") || "auto";
+                var resolved = pref === "auto"
+                    ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+                    : pref;
+                document.documentElement.setAttribute("data-theme", resolved);
+                document.documentElement.setAttribute("data-theme-pref", pref);
+            } catch (e) {}
+        })();
+    </script>
     <link rel="stylesheet" href="/static/admin.css" />
 </head>
 <body class="centered">

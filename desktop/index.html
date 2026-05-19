@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vòng Kim Cô</title>
+    <script>
+        // Paint with the right palette before App.svelte mounts. Source of
+        // truth is the Rust settings file, but it loads asynchronously; we
+        // mirror the chosen pref to localStorage on save so the next launch
+        // can use it here.
+        (function () {
+            try {
+                var pref = localStorage.getItem("vkc_theme") || "auto";
+                var resolved = pref === "auto"
+                    ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+                    : pref;
+                document.documentElement.setAttribute("data-theme", resolved);
+                document.documentElement.setAttribute("data-theme-pref", pref);
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body>
     <div id="app"></div>

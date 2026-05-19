@@ -12,6 +12,14 @@ pub struct Settings {
     pub hotkey_start: String,
     pub hotkey_stop: String,
     pub autostart: bool,
+    /// "auto" (follow OS preference), "light", or "dark". `serde(default)` keeps
+    /// older settings.json files (written before this field existed) loadable.
+    #[serde(default = "default_theme")]
+    pub theme: String,
+}
+
+fn default_theme() -> String {
+    "auto".to_string()
 }
 
 impl Default for Settings {
@@ -21,6 +29,7 @@ impl Default for Settings {
             hotkey_start: "CmdOrCtrl+Alt+S".into(),
             hotkey_stop: "CmdOrCtrl+Alt+E".into(),
             autostart: false,
+            theme: default_theme(),
         }
     }
 }

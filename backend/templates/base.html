@@ -4,6 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{% block title %}Vòng Kim Cô{% endblock %}</title>
+    <script>
+        // Apply persisted theme before paint to avoid flash. "auto" follows the
+        // OS preference; "light"/"dark" are explicit.
+        (function () {
+            try {
+                var pref = localStorage.getItem("vkc_theme") || "auto";
+                var resolved = pref === "auto"
+                    ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+                    : pref;
+                document.documentElement.setAttribute("data-theme", resolved);
+                document.documentElement.setAttribute("data-theme-pref", pref);
+            } catch (e) {}
+        })();
+    </script>
     <link rel="stylesheet" href="/static/admin.css" />
 </head>
 <body>
@@ -25,6 +39,11 @@
     </nav>
     <div class="user">
         {% block user %}
+        <div class="theme-toggle" role="group" aria-label="Giao diện">
+            <button type="button" data-theme-set="auto" title="Tự động theo hệ thống" aria-label="Tự động">🖥</button>
+            <button type="button" data-theme-set="light" title="Sáng" aria-label="Sáng">☀</button>
+            <button type="button" data-theme-set="dark" title="Tối" aria-label="Tối">🌙</button>
+        </div>
         <span class="role">Admin</span>
         <span>{{ user_email }}</span>
         <a href="/admin/logout" class="btn-ghost">Đăng xuất</a>
@@ -38,6 +57,45 @@
     <small>Vòng Kim Cô · Open Source · MIT · <a href="https://github.com/dvchd/vongkimco" target="_blank" rel="noopener" style="color: inherit;">GitHub</a></small>
 </footer>
 <script>
+    // Theme picker: wires up the topbar segmented control and keeps it in sync
+    // with system preference changes while in "auto" mode.
+    (function () {
+        var buttons = document.querySelectorAll('[data-theme-set]');
+        if (!buttons.length) return;
+        var root = document.documentElement;
+        function pref() { try { return localStorage.getItem('vkc_theme') || 'auto'; } catch (e) { return 'auto'; } }
+        function resolve(p) {
+            if (p === 'auto') {
+                return (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+            }
+            return p;
+        }
+        function sync() {
+            var p = pref();
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].classList.toggle('active', buttons[i].getAttribute('data-theme-set') === p);
+            }
+        }
+        function apply(p) {
+            try { localStorage.setItem('vkc_theme', p); } catch (e) {}
+            root.setAttribute('data-theme-pref', p);
+            root.setAttribute('data-theme', resolve(p));
+            sync();
+        }
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].addEventListener('click', function (ev) {
+                apply(ev.currentTarget.getAttribute('data-theme-set'));
+            });
+        }
+        sync();
+        if (window.matchMedia) {
+            var mq = window.matchMedia('(prefers-color-scheme: light)');
+            var handler = function () { if (pref() === 'auto') root.setAttribute('data-theme', resolve('auto')); };
+            if (mq.addEventListener) mq.addEventListener('change', handler);
+            else if (mq.addListener) mq.addListener(handler);
+        }
+    })();
+
     (function () {
         var path = window.location.pathname;
         var links = document.querySelectorAll('#main-nav a');

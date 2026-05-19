@@ -1,4 +1,5 @@
-:root {
+:root,
+:root[data-theme="dark"] {
     --bg: #0f1115;
     --surface: #161a22;
     --surface-2: #1e2330;
@@ -18,9 +19,52 @@
     --ok-soft: rgba(40, 167, 69, 0.14);
     --info: #4a90e2;
     --info-soft: rgba(74, 144, 226, 0.14);
+    --on-primary: #111;
+    --on-ok-soft: #b6f0c4;
+    --on-warn-soft: #ffe79a;
+    --on-danger-soft: #ffb4b4;
+    --on-banner-ok: #d8f3df;
+    --on-banner-error: #ffd1d1;
+    --on-banner-warn: #fff1c4;
+    --on-banner-info: #cee2ff;
+    --code-color: #f0c674;
+    --code-box-bg: #000;
     --radius: 8px;
     --radius-lg: 12px;
     color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    --bg: #f5f6fa;
+    --surface: #ffffff;
+    --surface-2: #eef0f6;
+    --surface-3: #e2e5ee;
+    --border: #d6dae3;
+    --border-strong: #b6bdcb;
+    --text: #1a1f2c;
+    --muted: #5a6478;
+    --primary: #b8870a;
+    --primary-strong: #8f6800;
+    --primary-soft: rgba(184, 135, 10, 0.12);
+    --danger: #c92a2a;
+    --danger-soft: rgba(201, 42, 42, 0.10);
+    --warn: #b07b10;
+    --warn-soft: rgba(176, 123, 16, 0.14);
+    --ok: #1e7c34;
+    --ok-soft: rgba(30, 124, 52, 0.10);
+    --info: #2563c2;
+    --info-soft: rgba(37, 99, 194, 0.10);
+    --on-primary: #fff;
+    --on-ok-soft: #135120;
+    --on-warn-soft: #6f4a00;
+    --on-danger-soft: #8a1a1a;
+    --on-banner-ok: #135120;
+    --on-banner-error: #8a1a1a;
+    --on-banner-warn: #6f4a00;
+    --on-banner-info: #1a4a98;
+    --code-color: #8a4a00;
+    --code-box-bg: #1a1f2c;
+    color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -55,14 +99,14 @@ button {
 button:hover { background: var(--surface-3); border-color: var(--border-strong); }
 button.primary {
     background: var(--primary);
-    color: #111;
+    color: var(--on-primary);
     font-weight: 600;
     border-color: var(--primary);
 }
 button.primary:hover { background: var(--primary-strong); border-color: var(--primary-strong); }
 button.danger {
     background: var(--danger-soft);
-    color: #ffb4b4;
+    color: var(--on-danger-soft);
     border-color: rgba(224, 72, 72, 0.35);
 }
 button.danger:hover { background: var(--danger); color: white; border-color: var(--danger); }
@@ -125,7 +169,7 @@ label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-
 }
 .sidebar .brand .logo {
     width: 28px; height: 28px;
-    background: var(--primary); color: #111;
+    background: var(--primary); color: var(--on-primary);
     border-radius: 50%;
     display: inline-flex; align-items: center; justify-content: center;
     font-weight: 700;
@@ -225,7 +269,7 @@ label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-
 .status-pill.active {
     background: var(--ok-soft);
     border-color: rgba(40, 167, 69, 0.4);
-    color: #b6f0c4;
+    color: var(--on-ok-soft);
 }
 .status-pill.active .dot {
     background: var(--ok);
@@ -234,19 +278,19 @@ label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-
 .status-pill.idle {
     background: var(--warn-soft);
     border-color: rgba(216, 169, 58, 0.4);
-    color: #ffe79a;
+    color: var(--on-warn-soft);
 }
 .status-pill.idle .dot { background: var(--warn); }
 .status-pill.offline {
     background: var(--danger-soft);
     border-color: rgba(224, 72, 72, 0.4);
-    color: #ffb4b4;
+    color: var(--on-danger-soft);
 }
 .status-pill.offline .dot { background: var(--danger); }
 .status-pill.online {
     background: var(--ok-soft);
     border-color: rgba(40, 167, 69, 0.4);
-    color: #b6f0c4;
+    color: var(--on-ok-soft);
 }
 .status-pill.online .dot { background: var(--ok); }
 
@@ -302,14 +346,14 @@ label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-
     font-size: 14px;
     line-height: 1.5;
 }
-.banner.error { border-left-color: var(--danger); background: var(--danger-soft); color: #ffd1d1; }
-.banner.ok    { border-left-color: var(--ok); background: var(--ok-soft); color: #d8f3df; }
-.banner.warn  { border-left-color: var(--warn); background: var(--warn-soft); color: #fff1c4; }
-.banner.info  { border-left-color: var(--info); background: var(--info-soft); color: #cee2ff; }
+.banner.error { border-left-color: var(--danger); background: var(--danger-soft); color: var(--on-banner-error); }
+.banner.ok    { border-left-color: var(--ok); background: var(--ok-soft); color: var(--on-banner-ok); }
+.banner.warn  { border-left-color: var(--warn); background: var(--warn-soft); color: var(--on-banner-warn); }
+.banner.info  { border-left-color: var(--info); background: var(--info-soft); color: var(--on-banner-info); }
 
 /* ---------- Auth code box ---------- */
 .code-box {
-    background: #000;
+    background: var(--code-box-bg);
     color: var(--primary);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 30px;
@@ -388,7 +432,7 @@ code {
     border-radius: 4px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12.5px;
-    color: #f0c674;
+    color: var(--code-color);
 }
 
 .elapsed-display {
@@ -410,6 +454,34 @@ code {
     text-decoration: underline;
 }
 .link-btn:hover { color: var(--primary-strong); }
+
+/* ---------- Theme picker ---------- */
+.theme-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    padding: 3px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+.theme-picker button {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.theme-picker button:hover { background: transparent; color: var(--text); border-color: transparent; }
+.theme-picker button.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
 
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {

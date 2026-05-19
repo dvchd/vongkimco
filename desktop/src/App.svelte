@@ -9,7 +9,9 @@
         settings,
         user,
         sessionState,
-        route
+        route,
+        applyTheme,
+        installThemeAutoListener,
     } from "./lib/stores";
     import Home from "./routes/Home.svelte";
     import Login from "./routes/Login.svelte";
@@ -23,6 +25,11 @@
 
     onMount(async () => {
         await loadSettings();
+        // Reconcile palette with the authoritative Rust-side setting (the
+        // inline boot script in index.html paints from localStorage, which may
+        // be stale if the user edited settings.json by hand).
+        applyTheme($settings?.theme || "auto");
+        installThemeAutoListener();
         await loadPolicy();
         await loadUser();
         await refreshStatus();
