@@ -52,6 +52,31 @@
         }
         if (best) best.classList.add('active');
     })();
+
+    // Browser-timezone reformatting: every <time data-utc="<RFC3339 UTC>"> on
+    // the page gets its text replaced with the same instant rendered in the
+    // viewer's local timezone (Intl.DateTimeFormat picks up the browser/OS
+    // setting — e.g. Asia/Tokyo for someone in Japan). All values stay UTC on
+    // the wire; this only affects display. If parsing fails we leave the
+    // server-rendered fallback intact.
+    (function () {
+        var nodes = document.querySelectorAll('time[data-utc]');
+        if (!nodes.length) return;
+        var fmt = new Intl.DateTimeFormat(undefined, {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false
+        });
+        var tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || '';
+        for (var i = 0; i < nodes.length; i++) {
+            var raw = nodes[i].getAttribute('data-utc');
+            if (!raw) continue;
+            var d = new Date(raw);
+            if (isNaN(d.getTime())) continue;
+            nodes[i].textContent = fmt.format(d);
+            if (tz) nodes[i].setAttribute('title', tz);
+        }
+    })();
 </script>
 </body>
 </html>

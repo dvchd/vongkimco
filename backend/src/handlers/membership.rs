@@ -14,7 +14,7 @@ use serde::Deserialize;
 use crate::auth::{AdminUser, CurrentUser};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
-use crate::time_fmt::{fmt_local, fmt_local_opt};
+use crate::time_fmt::TsCell;
 
 const MAX_NOTE: usize = 1000;
 
@@ -32,9 +32,9 @@ pub struct RequestRow {
     pub status: String,
     pub status_label: String,
     pub note: String,
-    pub created_at: String,
-    pub updated_at: String,
-    pub decided_at: String,
+    pub created_at: TsCell,
+    pub updated_at: TsCell,
+    pub decided_at: TsCell,
 }
 
 fn status_label(s: &str) -> &'static str {
@@ -59,9 +59,9 @@ async fn fetch_request(state: &AppState, user_id: &str) -> AppResult<Option<Requ
         status_label: status_label(&status).to_string(),
         status,
         note: note.unwrap_or_default(),
-        created_at: fmt_local(&c, tz),
-        updated_at: fmt_local(&u, tz),
-        decided_at: fmt_local_opt(d.as_deref(), tz),
+        created_at: TsCell::new(&c, tz),
+        updated_at: TsCell::new(&u, tz),
+        decided_at: TsCell::opt(d.as_deref(), tz),
     }))
 }
 
@@ -245,7 +245,7 @@ pub async fn list_pending(
             id,
             email,
             note: note.unwrap_or_default(),
-            created_at: fmt_local(&created, tz),
+            created_at: TsCell::new(&created, tz),
         })
         .collect())
 }
@@ -254,5 +254,5 @@ pub struct PendingRequestRow {
     pub id: String,
     pub email: String,
     pub note: String,
-    pub created_at: String,
+    pub created_at: TsCell,
 }

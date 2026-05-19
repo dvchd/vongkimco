@@ -7,8 +7,8 @@
 </div>
 
 <div class="kpis">
-    <div class="kpi"><div class="kpi-label">Bắt đầu</div><div class="kpi-value" style="font-size: 14px;">{{ session.started_at }}</div></div>
-    <div class="kpi"><div class="kpi-label">Kết thúc</div><div class="kpi-value" style="font-size: 14px;">{{ session.ended_at }}</div></div>
+    <div class="kpi"><div class="kpi-label">Bắt đầu</div><div class="kpi-value" style="font-size: 14px;"><time data-utc="{{ session.started_at.utc }}">{{ session.started_at.local }}</time></div></div>
+    <div class="kpi"><div class="kpi-label">Kết thúc</div><div class="kpi-value" style="font-size: 14px;"><time data-utc="{{ session.ended_at.utc }}">{{ session.ended_at.local }}</time></div></div>
     <div class="kpi info"><div class="kpi-label">Thời lượng</div><div class="kpi-value">{{ session.duration }}</div></div>
     <div class="kpi ok"><div class="kpi-label">Active</div><div class="kpi-value">{{ activity_summary.active_pct }}%</div></div>
 </div>
@@ -46,7 +46,7 @@
     <tbody>
         {% for a in recent_apps %}
         <tr>
-            <td class="small muted">{{ a.sampled_at }}</td>
+            <td class="small muted"><time data-utc="{{ a.sampled_at.utc }}">{{ a.sampled_at.local }}</time></td>
             <td><strong>{{ a.foreground_app }}</strong></td>
             <td class="muted">{{ a.foreground_title }}</td>
         </tr>
@@ -68,7 +68,7 @@
     <a class="shot" href="/admin/screenshots/{{ sh.id }}/image" target="_blank">
         <img src="/admin/screenshots/{{ sh.id }}/image" alt="screenshot" loading="lazy" />
         <div class="shot-meta">
-            <div>{{ sh.captured_at }}</div>
+            <div><time data-utc="{{ sh.captured_at.utc }}">{{ sh.captured_at.local }}</time></div>
             <div class="small">{{ sh.bytes }} bytes</div>
         </div>
     </a>

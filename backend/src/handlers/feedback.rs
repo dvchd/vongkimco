@@ -15,7 +15,7 @@ use serde::Deserialize;
 use crate::auth::{AdminUser, CurrentUser};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
-use crate::time_fmt::fmt_local;
+use crate::time_fmt::TsCell;
 
 const MAX_BODY: usize = 4000;
 const MAX_TITLE: usize = 200;
@@ -58,14 +58,14 @@ pub struct PostRow {
     pub status: String,
     pub status_label: String,
     pub category_label: String,
-    pub created_at: String,
+    pub created_at: TsCell,
     pub reply_count: i64,
 }
 
 pub struct ReplyRow {
     pub author_email: String,
     pub body: String,
-    pub created_at: String,
+    pub created_at: TsCell,
     pub is_admin_reply: bool,
 }
 
@@ -135,7 +135,7 @@ pub async fn member_list(
                 body: truncate(&body, 200),
                 status_label: status_label(&status).to_string(),
                 status,
-                created_at: fmt_local(&created_at, tz),
+                created_at: TsCell::new(&created_at, tz),
                 reply_count,
             },
         )
@@ -269,7 +269,7 @@ async fn detail_impl(
         .map(|(email, is_admin, body, created)| ReplyRow {
             author_email: email,
             body,
-            created_at: fmt_local(&created, tz),
+            created_at: TsCell::new(&created, tz),
             is_admin_reply: is_admin != 0,
         })
         .collect();
@@ -282,7 +282,7 @@ async fn detail_impl(
         body,
         status_label: status_label(&status).to_string(),
         status,
-        created_at: fmt_local(&created_at, tz),
+        created_at: TsCell::new(&created_at, tz),
         reply_count: 0,
     };
 
@@ -447,7 +447,7 @@ pub async fn admin_list(
                 body: truncate(&body, 240),
                 status_label: status_label(&status).to_string(),
                 status,
-                created_at: fmt_local(&created_at, tz),
+                created_at: TsCell::new(&created_at, tz),
                 reply_count,
             },
         )
@@ -460,4 +460,3 @@ pub async fn admin_list(
     }
     .into_response())
 }
-

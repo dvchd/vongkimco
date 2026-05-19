@@ -39,9 +39,9 @@
             <div class="quote">{{ req.note }}</div>
         {% endif %}
         <p class="muted small" style="margin-top: 12px;">
-            Gửi lần đầu: {{ req.created_at }} ·
-            Cập nhật: {{ req.updated_at }} ·
-            Quyết định: {{ req.decided_at }}
+            Gửi lần đầu: <time data-utc="{{ req.created_at.utc }}">{{ req.created_at.local }}</time> ·
+            Cập nhật: <time data-utc="{{ req.updated_at.utc }}">{{ req.updated_at.local }}</time> ·
+            Quyết định: <time data-utc="{{ req.decided_at.utc }}">{{ req.decided_at.local }}</time>
         </p>
     </div>
 

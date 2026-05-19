@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::auth::{AdminUser, DeviceAuth};
 use crate::error::AppResult;
 use crate::state::AppState;
-use crate::time_fmt::fmt_local;
+use crate::time_fmt::TsCell;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct DevicePolicy {
@@ -74,7 +74,7 @@ pub async fn get_config(
 pub struct PolicyTemplate {
     pub user_email: String,
     pub policy: DevicePolicy,
-    pub updated_at_local: String,
+    pub updated_at_cell: TsCell,
     pub flash: Option<String>,
 }
 
@@ -85,12 +85,12 @@ pub async fn admin_page(
 ) -> AppResult<Response> {
     let p = load(&state).await?;
     let tz = state.config.app_timezone;
-    let flash = q.get("saved").map(|_| {
-        "Đã lưu. Các desktop sẽ áp dụng cấu hình mới trong vòng vài phút.".to_string()
-    });
+    let flash = q
+        .get("saved")
+        .map(|_| "Đã lưu. Các desktop sẽ áp dụng cấu hình mới trong vòng vài phút.".to_string());
     Ok(PolicyTemplate {
         user_email: u.email,
-        updated_at_local: fmt_local(&p.updated_at, tz),
+        updated_at_cell: TsCell::new(&p.updated_at, tz),
         policy: p,
         flash,
     }

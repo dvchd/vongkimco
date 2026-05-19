@@ -21,7 +21,7 @@
     </h1>
     <p>
         Người gửi: <strong>{{ author_email }}</strong> ·
-        <span class="muted">{{ post.created_at }}</span> ·
+        <span class="muted"><time data-utc="{{ post.created_at.utc }}">{{ post.created_at.local }}</time></span> ·
         Trạng thái: <span class="badge status-{{ post.status }}">{{ post.status_label }}</span>
     </p>
 </div>
@@ -45,7 +45,7 @@
         <div class="reply-head">
             <strong>{{ r.author_email }}</strong>
             {% if r.is_admin_reply %}<span class="badge admin">admin</span>{% endif %}
-            <span class="muted small">{{ r.created_at }}</span>
+            <span class="muted small"><time data-utc="{{ r.created_at.utc }}">{{ r.created_at.local }}</time></span>
         </div>
         <div class="post-body">{{ r.body }}</div>
     </div>

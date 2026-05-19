@@ -85,7 +85,7 @@
             </a></td>
             <td><span class="badge status-{{ p.status }}">{{ p.status_label }}</span></td>
             <td>{{ p.reply_count }}</td>
-            <td class="small muted">{{ p.created_at }}</td>
+            <td class="small muted"><time data-utc="{{ p.created_at.utc }}">{{ p.created_at.local }}</time></td>
         </tr>
         {% endfor %}
     </tbody>

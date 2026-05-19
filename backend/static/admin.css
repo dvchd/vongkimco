@@ -459,6 +459,80 @@ ul li::marker { color: var(--muted); }
     color: var(--muted);
 }
 
+/* ---------- Weekly calendar (user_detail) ---------- */
+.cal-week {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+}
+.cal-week-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+}
+.cal-day {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    min-height: 110px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.cal-day.today {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary-soft);
+}
+.cal-day.future { opacity: 0.45; }
+.cal-day.empty .cal-bar-fill { background: var(--border); }
+.cal-day-head {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: capitalize;
+}
+.cal-day.today .cal-day-head { color: var(--primary); font-weight: 600; }
+.cal-bar {
+    flex: 1;
+    background: var(--surface-3);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    min-height: 40px;
+}
+.cal-bar-fill {
+    width: 100%;
+    background: linear-gradient(180deg, var(--primary), var(--primary-strong));
+    border-radius: 4px 4px 0 0;
+    min-height: 2px;
+    transition: height 0.25s ease;
+}
+.cal-day-dur {
+    font-size: 12px;
+    color: var(--text);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.cal-day.empty .cal-day-dur { color: var(--muted); }
+@media (max-width: 720px) {
+    .cal-grid { gap: 4px; }
+    .cal-day { min-height: 90px; padding: 6px; }
+    .cal-day-head { font-size: 11px; }
+    .cal-day-dur { font-size: 11px; }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
     .topbar { flex-wrap: wrap; gap: 12px; padding: 10px 14px; }

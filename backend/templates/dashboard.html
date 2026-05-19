@@ -44,8 +44,8 @@
         {% for s in recent_sessions %}
         <tr>
             <td>{{ s.user_email }}</td>
-            <td><a href="/admin/sessions/{{ s.id }}">{{ s.started_at }}</a></td>
-            <td>{{ s.ended_at }}</td>
+            <td><a href="/admin/sessions/{{ s.id }}"><time data-utc="{{ s.started_at.utc }}">{{ s.started_at.local }}</time></a></td>
+            <td><time data-utc="{{ s.ended_at.utc }}">{{ s.ended_at.local }}</time></td>
             <td>{{ s.duration }}</td>
             <td class="muted">{{ s.note }}</td>
         </tr>

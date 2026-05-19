@@ -13,7 +13,7 @@ use serde::Deserialize;
 use crate::auth::{AdminUser, CurrentUser};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
-use crate::time_fmt::{fmt_local, fmt_local_opt, parse_utc};
+use crate::time_fmt::{parse_utc, to_utc_iso, TsCell};
 
 #[derive(Template)]
 #[template(path = "login.html")]
@@ -45,6 +45,11 @@ pub struct UserDetailTemplate {
     pub user_email: String,
     pub viewing: UserRow,
     pub sessions: Vec<SessionRow>,
+    /// JSON-encoded list of `{started, ended, duration_seconds}` covering the
+    /// last 21 days of sessions for this user. Embedded into the page so the
+    /// in-browser weekly calendar can aggregate per-day duration in whatever
+    /// timezone the viewer's browser reports — no extra fetch needed.
+    pub calendar_json: String,
 }
 
 #[derive(Template)]
@@ -78,7 +83,7 @@ pub struct AdminMembersTemplate {
 pub struct DbMemberRow {
     pub email: String,
     pub note: String,
-    pub created_at: String,
+    pub created_at: TsCell,
     pub added_by_email: String,
     pub has_user: bool,
 }
@@ -86,8 +91,8 @@ pub struct DbMemberRow {
 pub struct SessionRow {
     pub id: String,
     pub user_email: String,
-    pub started_at: String,
-    pub ended_at: String,
+    pub started_at: TsCell,
+    pub ended_at: TsCell,
     pub duration: String,
     pub note: String,
 }
@@ -99,7 +104,7 @@ pub struct UserRow {
     pub is_admin: bool,
     pub is_member: bool,
     pub session_count: i64,
-    pub last_seen: String,
+    pub last_seen: TsCell,
 }
 
 pub struct ActivitySummary {
@@ -112,14 +117,14 @@ pub struct ActivitySummary {
 }
 
 pub struct AppRow {
-    pub sampled_at: String,
+    pub sampled_at: TsCell,
     pub foreground_app: String,
     pub foreground_title: String,
 }
 
 pub struct ScreenshotRow {
     pub id: String,
-    pub captured_at: String,
+    pub captured_at: TsCell,
     pub bytes: i64,
     pub session_id: String,
     pub user_email: String,
@@ -196,8 +201,8 @@ pub async fn admin_root(
             SessionRow {
                 id,
                 user_email: email,
-                started_at: fmt_local(&started_at, tz),
-                ended_at: fmt_local_opt(ended_at.as_deref(), tz),
+                started_at: TsCell::new(&started_at, tz),
+                ended_at: TsCell::opt(ended_at.as_deref(), tz),
                 duration: dur,
                 note: note.unwrap_or_default(),
             }
@@ -219,16 +224,26 @@ pub async fn users_list(
     State(state): State<Arc<AppState>>,
     AdminUser(u): AdminUser,
 ) -> AppResult<Response> {
-    let rows =
-        sqlx::query_as::<_, (String, String, Option<String>, i64, i64, i64, Option<String>)>(
-            "SELECT u.id, u.email, u.name, u.is_admin, u.is_member,
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            Option<String>,
+            i64,
+            i64,
+            i64,
+            Option<String>,
+        ),
+    >(
+        "SELECT u.id, u.email, u.name, u.is_admin, u.is_member,
                 (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id) AS session_count,
                 (SELECT MAX(s.started_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen
          FROM users u
          ORDER BY u.created_at DESC",
-        )
-        .fetch_all(&state.db)
-        .await?;
+    )
+    .fetch_all(&state.db)
+    .await?;
 
     let tz = state.config.app_timezone;
     let users: Vec<UserRow> = rows
@@ -241,7 +256,7 @@ pub async fn users_list(
                 is_admin: is_admin != 0,
                 is_member: is_admin != 0 || is_member != 0,
                 session_count: count,
-                last_seen: fmt_local_opt(last.as_deref(), tz),
+                last_seen: TsCell::opt(last.as_deref(), tz),
             },
         )
         .collect();
@@ -282,6 +297,34 @@ pub async fn user_detail(
     .await?;
 
     let tz = state.config.app_timezone;
+
+    // Calendar feed: pull a separate window of sessions that overlap the
+    // recent past so the browser can aggregate two weeks of duration without
+    // having to refetch. 21 days covers the "Sat/Sun → show prev+current
+    // week" requirement even for the easternmost timezone the browser might
+    // be in (and gives a small buffer for ongoing sessions started yesterday).
+    let window_start = chrono::Utc::now() - chrono::Duration::days(21);
+    let window_start_iso = window_start.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+    let cal_rows = sqlx::query_as::<_, (String, Option<String>)>(
+        "SELECT started_at, ended_at FROM sessions
+         WHERE user_id = ?
+           AND (ended_at IS NULL OR ended_at >= ?)
+         ORDER BY started_at ASC",
+    )
+    .bind(&target.id)
+    .bind(&window_start_iso)
+    .fetch_all(&state.db)
+    .await?;
+    let calendar_entries: Vec<CalendarEntry> = cal_rows
+        .into_iter()
+        .map(|(started, ended)| CalendarEntry {
+            started: to_utc_iso(&started),
+            ended: ended.as_deref().map(to_utc_iso).filter(|s| !s.is_empty()),
+        })
+        .filter(|e| !e.started.is_empty())
+        .collect();
+    let calendar_json = serde_json::to_string(&calendar_entries).unwrap_or_else(|_| "[]".into());
+
     let sessions: Vec<SessionRow> = rows
         .into_iter()
         .map(|(id, started_at, ended_at, note)| {
@@ -299,8 +342,8 @@ pub async fn user_detail(
             SessionRow {
                 id,
                 user_email: target.email.clone(),
-                started_at: fmt_local(&started_at, tz),
-                ended_at: fmt_local_opt(ended_at.as_deref(), tz),
+                started_at: TsCell::new(&started_at, tz),
+                ended_at: TsCell::opt(ended_at.as_deref(), tz),
                 duration: dur,
                 note: note.unwrap_or_default(),
             }
@@ -314,15 +357,25 @@ pub async fn user_detail(
         is_admin: target.is_admin_bool(),
         is_member: target.is_member_bool(),
         session_count,
-        last_seen: fmt_local_opt(last_seen.as_deref(), tz),
+        last_seen: TsCell::opt(last_seen.as_deref(), tz),
     };
 
     Ok(UserDetailTemplate {
         user_email: admin.email,
         viewing,
         sessions,
+        calendar_json,
     }
     .into_response())
+}
+
+/// Wire shape for the inline weekly calendar. Both fields are RFC3339 UTC so
+/// the in-page script can do all date math in the browser's own timezone.
+#[derive(serde::Serialize)]
+struct CalendarEntry {
+    started: String,
+    /// `None` ⇒ session still ongoing; the script treats this as "ended now".
+    ended: Option<String>,
 }
 
 pub async fn session_detail(
@@ -357,8 +410,8 @@ pub async fn session_detail(
     let session = SessionRow {
         id: s.id.clone(),
         user_email: owner.email.clone(),
-        started_at: fmt_local(&s.started_at, tz),
-        ended_at: fmt_local_opt(s.ended_at.as_deref(), tz),
+        started_at: TsCell::new(&s.started_at, tz),
+        ended_at: TsCell::opt(s.ended_at.as_deref(), tz),
         duration: dur,
         note: s.note.clone().unwrap_or_default(),
     };
@@ -386,7 +439,7 @@ pub async fn session_detail(
     let recent_apps: Vec<AppRow> = app_rows
         .into_iter()
         .map(|(t, app, title)| AppRow {
-            sampled_at: fmt_local(&t, tz),
+            sampled_at: TsCell::new(&t, tz),
             foreground_app: app.unwrap_or_default(),
             foreground_title: title.unwrap_or_default(),
         })
@@ -403,7 +456,7 @@ pub async fn session_detail(
         .into_iter()
         .map(|(id, t, bytes)| ScreenshotRow {
             id,
-            captured_at: fmt_local(&t, tz),
+            captured_at: TsCell::new(&t, tz),
             bytes: bytes.unwrap_or(0),
             session_id: s.id.clone(),
             user_email: owner.email.clone(),
@@ -445,7 +498,7 @@ pub async fn screenshots_list(
         .into_iter()
         .map(|(id, t, bytes, sid, email)| ScreenshotRow {
             id,
-            captured_at: fmt_local(&t, tz),
+            captured_at: TsCell::new(&t, tz),
             bytes: bytes.unwrap_or(0),
             session_id: sid,
             user_email: email,
@@ -534,7 +587,7 @@ async fn members_page_with_flash(
         db_members.push(DbMemberRow {
             email,
             note: note.unwrap_or_default(),
-            created_at: fmt_local(&created_at, tz),
+            created_at: TsCell::new(&created_at, tz),
             added_by_email: added_by_email.unwrap_or_else(|| "—".into()),
             has_user: has_user > 0,
         });

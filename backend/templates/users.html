@@ -32,7 +32,7 @@
                 {% endif %}
             </td>
             <td>{{ u.session_count }}</td>
-            <td class="muted small">{{ u.last_seen }}</td>
+            <td class="muted small"><time data-utc="{{ u.last_seen.utc }}">{{ u.last_seen.local }}</time></td>
         </tr>
         {% endfor %}
     </tbody>

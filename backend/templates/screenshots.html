@@ -19,7 +19,7 @@
         <img src="/admin/screenshots/{{ sh.id }}/image" alt="screenshot" loading="lazy" />
         <div class="shot-meta">
             <div><strong style="color: var(--text);">{{ sh.user_email }}</strong></div>
-            <div>{{ sh.captured_at }}</div>
+            <div><time data-utc="{{ sh.captured_at.utc }}">{{ sh.captured_at.local }}</time></div>
             <div><a href="/admin/sessions/{{ sh.session_id }}">Xem phiên →</a></div>
         </div>
     </a>

@@ -36,7 +36,7 @@
         <tr>
             <td><strong>{{ r.email }}</strong></td>
             <td class="muted">{{ r.note }}</td>
-            <td class="small muted">{{ r.created_at }}</td>
+            <td class="small muted"><time data-utc="{{ r.created_at.utc }}">{{ r.created_at.local }}</time></td>
             <td>
                 <div class="row tight">
                     <form method="POST" action="/admin/members/approve-request" style="margin: 0;">
@@ -92,7 +92,7 @@
             <td><strong>{{ m.email }}</strong></td>
             <td class="muted">{{ m.note }}</td>
             <td class="small muted">{{ m.added_by_email }}</td>
-            <td class="small muted">{{ m.created_at }}</td>
+            <td class="small muted"><time data-utc="{{ m.created_at.utc }}">{{ m.created_at.local }}</time></td>
             <td>{% if m.has_user %}<span class="badge status-approved">đã vào</span>{% else %}<span class="muted small">chưa</span>{% endif %}</td>
             <td>
                 <form method="POST" action="/admin/members/remove" style="margin: 0;">

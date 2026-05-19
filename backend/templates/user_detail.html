@@ -22,8 +22,18 @@
     </div>
     <div class="kpi">
         <div class="kpi-label">Phiên gần nhất</div>
-        <div class="kpi-value" style="font-size: 14px;">{{ viewing.last_seen }}</div>
+        <div class="kpi-value" style="font-size: 14px;">
+            <time data-utc="{{ viewing.last_seen.utc }}">{{ viewing.last_seen.local }}</time>
+        </div>
     </div>
+</div>
+
+<div class="section-header">
+    <h2>Thời gian sử dụng theo tuần</h2>
+    <span class="count" id="cal-tz-label">—</span>
+</div>
+<div id="weekly-calendar" data-sessions="{{ calendar_json }}">
+    <p class="muted small" style="margin: 8px 0;">Đang dựng lịch theo múi giờ của trình duyệt…</p>
 </div>
 
 <div class="section-header">
@@ -43,8 +53,8 @@
     <tbody>
         {% for s in sessions %}
         <tr>
-            <td><a href="/admin/sessions/{{ s.id }}">{{ s.started_at }}</a></td>
-            <td>{{ s.ended_at }}</td>
+            <td><a href="/admin/sessions/{{ s.id }}"><time data-utc="{{ s.started_at.utc }}">{{ s.started_at.local }}</time></a></td>
+            <td><time data-utc="{{ s.ended_at.utc }}">{{ s.ended_at.local }}</time></td>
             <td>{{ s.duration }}</td>
             <td class="muted">{{ s.note }}</td>
         </tr>
@@ -53,4 +63,131 @@
 </table>
 </div>
 {% endif %}
+
+<script>
+(function () {
+    var root = document.getElementById('weekly-calendar');
+    if (!root) return;
+    var raw = root.getAttribute('data-sessions') || '[]';
+    var entries;
+    try { entries = JSON.parse(raw); } catch (e) { entries = []; }
+    if (!Array.isArray(entries)) entries = [];
+
+    // Parse entries → numeric [startMs, endMs]. Skip malformed rows.
+    var now = Date.now();
+    var sessions = entries.map(function (e) {
+        var start = Date.parse(e.started);
+        if (isNaN(start)) return null;
+        var end = e.ended ? Date.parse(e.ended) : NaN;
+        if (isNaN(end)) end = now;
+        if (end < start) return null;
+        return { start: start, end: end };
+    }).filter(Boolean);
+
+    // Helpers — all in the browser's local TZ.
+    function startOfDay(d) {
+        var x = new Date(d.getTime());
+        x.setHours(0, 0, 0, 0);
+        return x;
+    }
+    // Week starts Monday: shift so Mon=0 .. Sun=6.
+    function mondayOf(d) {
+        var x = startOfDay(d);
+        var dow = (x.getDay() + 6) % 7; // 0=Mon .. 6=Sun
+        x.setDate(x.getDate() - dow);
+        return x;
+    }
+    function addDays(d, n) {
+        var x = new Date(d.getTime());
+        x.setDate(x.getDate() + n);
+        return x;
+    }
+    function fmtHms(ms) {
+        if (ms <= 0) return '0m';
+        var s = Math.floor(ms / 1000);
+        var h = Math.floor(s / 3600);
+        var m = Math.floor((s % 3600) / 60);
+        if (h > 0) return h + 'h ' + m + 'm';
+        if (m > 0) return m + 'm';
+        return s + 's';
+    }
+    var fmtDate = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: '2-digit', month: '2-digit' });
+    var tzLabel = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'local';
+
+    var tzNode = document.getElementById('cal-tz-label');
+    if (tzNode) tzNode.textContent = 'Múi giờ: ' + tzLabel;
+
+    // Pick which weeks to show.
+    var today = new Date();
+    var dow = today.getDay(); // 0=Sun .. 6=Sat
+    var currentMonday = mondayOf(today);
+    var weeks = [];
+    if (dow === 0 || dow === 6) {
+        // Sat/Sun → show previous week + current week.
+        weeks.push(addDays(currentMonday, -7));
+        weeks.push(currentMonday);
+    } else {
+        weeks.push(currentMonday);
+    }
+
+    // For each day cell, sum durations of sessions that overlap that day in
+    // the local TZ. Sessions spanning midnight contribute to each day they
+    // touch, weighted by overlap.
+    function durationOnDay(s, dayStart, dayEnd) {
+        var a = Math.max(s.start, dayStart);
+        var b = Math.min(s.end, dayEnd);
+        return b > a ? b - a : 0;
+    }
+
+    function renderWeek(monday) {
+        var weekTotal = 0;
+        var cells = '';
+        var maxDur = 0;
+        var dayDurations = [];
+        for (var i = 0; i < 7; i++) {
+            var dayStart = addDays(monday, i);
+            var dayEnd = addDays(dayStart, 1);
+            var ds = dayStart.getTime();
+            var de = dayEnd.getTime();
+            var dur = 0;
+            for (var j = 0; j < sessions.length; j++) {
+                dur += durationOnDay(sessions[j], ds, de);
+            }
+            dayDurations.push(dur);
+            if (dur > maxDur) maxDur = dur;
+            weekTotal += dur;
+        }
+        for (var i = 0; i < 7; i++) {
+            var dayStart = addDays(monday, i);
+            var dur = dayDurations[i];
+            var pct = maxDur > 0 ? Math.round((dur / maxDur) * 100) : 0;
+            var isToday = startOfDay(today).getTime() === dayStart.getTime();
+            var isFuture = dayStart.getTime() > startOfDay(today).getTime();
+            var cls = 'cal-day';
+            if (isToday) cls += ' today';
+            if (isFuture) cls += ' future';
+            if (dur === 0) cls += ' empty';
+            cells += '<div class="' + cls + '">'
+                + '<div class="cal-day-head">' + fmtDate.format(dayStart) + '</div>'
+                + '<div class="cal-bar"><div class="cal-bar-fill" style="height:' + pct + '%"></div></div>'
+                + '<div class="cal-day-dur">' + fmtHms(dur) + '</div>'
+                + '</div>';
+        }
+        var sunday = addDays(monday, 6);
+        var rangeLabel = fmtDate.format(monday) + ' → ' + fmtDate.format(sunday);
+        return '<div class="cal-week">'
+            + '<div class="cal-week-head">'
+            +   '<strong>' + rangeLabel + '</strong>'
+            +   '<span class="muted small">Tổng: ' + fmtHms(weekTotal) + '</span>'
+            + '</div>'
+            + '<div class="cal-grid">' + cells + '</div>'
+            + '</div>';
+    }
+
+    var html = '';
+    for (var w = 0; w < weeks.length; w++) html += renderWeek(weeks[w]);
+    if (!html) html = '<div class="empty"><div class="icon">📭</div><p>Chưa có dữ liệu phiên trong khoảng thời gian này.</p></div>';
+    root.innerHTML = html;
+})();
+</script>
 {% endblock %}
