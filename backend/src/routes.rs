@@ -69,6 +69,7 @@ pub async fn build_router(state: Arc<AppState>) -> anyhow::Result<Router> {
         .route("/logout", get(oauth::admin_logout))
         .route("/users", get(admin::users_list))
         .route("/users/:id", get(admin::user_detail))
+        .route("/calendar", get(admin::team_calendar))
         .route("/sessions/:id", get(admin::session_detail))
         .route("/screenshots", get(admin::screenshots_list))
         .route("/screenshots/:id/image", get(admin::screenshot_file))

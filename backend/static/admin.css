@@ -533,6 +533,48 @@ ul li::marker { color: var(--muted); }
     .cal-day-dur { font-size: 11px; }
 }
 
+/* ---------- Team calendar matrix (heatmap) ---------- */
+.cal-mx-wrap { margin-bottom: 28px; }
+table.data.cal-mx { table-layout: fixed; }
+.cal-mx th, .cal-mx td {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    padding: 8px 6px;
+}
+.cal-mx .cal-mx-name {
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+}
+.cal-mx .cal-mx-name a { color: var(--primary); text-decoration: none; }
+.cal-mx .cal-mx-name a:hover { text-decoration: underline; }
+.cal-mx-head.today { color: var(--primary); }
+.cal-mx-total-h { color: var(--muted); }
+.cal-mx-total { font-weight: 600; }
+.cal-mx-foot {
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 12px;
+    border-top: 1px solid var(--border-strong);
+}
+.cal-mx-foot.cal-mx-grand { color: var(--text); font-weight: 600; }
+.cal-mx-cell.today { box-shadow: inset 0 0 0 1px var(--primary); }
+.cal-mx-cell.future { opacity: 0.45; }
+/* Heatmap intensity tints — same primary gold, varying alpha. */
+.cal-mx-cell.cell-empty { color: var(--muted); }
+.cal-mx-cell.cell-l1 { background: rgba(212, 160, 23, 0.10); }
+.cal-mx-cell.cell-l2 { background: rgba(212, 160, 23, 0.22); }
+.cal-mx-cell.cell-l3 { background: rgba(212, 160, 23, 0.38); }
+.cal-mx-cell.cell-l4 { background: rgba(212, 160, 23, 0.55); color: #1a1303; }
+.cal-mx-cell.cell-l5 { background: rgba(212, 160, 23, 0.78); color: #150f00; font-weight: 600; }
+@media (max-width: 720px) {
+    .cal-mx th, .cal-mx td { padding: 6px 4px; font-size: 12px; }
+    .cal-mx .cal-mx-name { max-width: 160px; }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
     .topbar { flex-wrap: wrap; gap: 12px; padding: 10px 14px; }

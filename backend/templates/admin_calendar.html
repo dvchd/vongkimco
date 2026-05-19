@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Lịch tuần · Vòng Kim Cô{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Lịch sử dụng theo tuần</h1>
+    <p>
+        Thời lượng phiên của tất cả thành viên (kể cả admin) được nhóm theo ngày
+        trong múi giờ của trình duyệt. Cuối tuần (T7/CN) hiển thị thêm tuần trước
+        để dễ so sánh.
+    </p>
+</div>
+
+<div class="section-header">
+    <span class="count" id="cal-team-tz">—</span>
+    <span class="count">{{ member_count }} thành viên</span>
+</div>
+
+<div id="team-calendar" data-members="{{ members_json }}">
+    <p class="muted small" style="margin: 8px 0;">Đang dựng lịch theo múi giờ của trình duyệt…</p>
+</div>
+
+<script>
+(function () {
+    var root = document.getElementById('team-calendar');
+    if (!root) return;
+    var raw = root.getAttribute('data-members') || '[]';
+    var members;
+    try { members = JSON.parse(raw); } catch (e) { members = []; }
+    if (!Array.isArray(members)) members = [];
+
+    var now = Date.now();
+    // Pre-parse every session in every member; skip malformed rows.
+    members.forEach(function (m) {
+        m._sessions = (m.sessions || []).map(function (e) {
+            var start = Date.parse(e.started);
+            if (isNaN(start)) return null;
+            var end = e.ended ? Date.parse(e.ended) : NaN;
+            if (isNaN(end)) end = now;
+            if (end < start) return null;
+            return { start: start, end: end };
+        }).filter(Boolean);
+    });
+
+    function startOfDay(d) {
+        var x = new Date(d.getTime ? d.getTime() : d);
+        x.setHours(0, 0, 0, 0);
+        return x;
+    }
+    function mondayOf(d) {
+        var x = startOfDay(d);
+        var dow = (x.getDay() + 6) % 7;
+        x.setDate(x.getDate() - dow);
+        return x;
+    }
+    function addDays(d, n) {
+        var x = new Date(d.getTime());
+        x.setDate(x.getDate() + n);
+        return x;
+    }
+    function fmtDur(ms) {
+        if (ms <= 0) return '—';
+        var s = Math.floor(ms / 1000);
+        var h = Math.floor(s / 3600);
+        var m = Math.floor((s % 3600) / 60);
+        if (h > 0) return h + 'h ' + (m ? m + 'm' : '');
+        if (m > 0) return m + 'm';
+        return s + 's';
+    }
+    function durationOnDay(s, dayStart, dayEnd) {
+        var a = Math.max(s.start, dayStart);
+        var b = Math.min(s.end, dayEnd);
+        return b > a ? b - a : 0;
+    }
+
+    var fmtDay = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: '2-digit', month: '2-digit' });
+    var fmtRange = new Intl.DateTimeFormat(undefined, { day: '2-digit', month: '2-digit' });
+    var tzLabel = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'local';
+    var tzNode = document.getElementById('cal-team-tz');
+    if (tzNode) tzNode.textContent = 'Múi giờ: ' + tzLabel;
+
+    var today = new Date();
+    var dow = today.getDay();
+    var currentMonday = mondayOf(today);
+    var weeks = [];
+    if (dow === 0 || dow === 6) {
+        weeks.push(addDays(currentMonday, -7));
+        weeks.push(currentMonday);
+    } else {
+        weeks.push(currentMonday);
+    }
+
+    // Members with zero activity in the *whole* window go to the bottom so
+    // the active people stay at the top of the matrix.
+    function totalMs(m) {
+        return m._sessions.reduce(function (acc, s) { return acc + (s.end - s.start); }, 0);
+    }
+    members.sort(function (a, b) {
+        var ta = totalMs(a), tb = totalMs(b);
+        if (tb !== ta) return tb - ta;
+        return (a.email || '').localeCompare(b.email || '');
+    });
+
+    function intensityClass(dur, maxDur) {
+        if (dur <= 0) return 'cell-empty';
+        if (maxDur <= 0) return 'cell-empty';
+        var pct = dur / maxDur;
+        if (pct >= 0.85) return 'cell-l5';
+        if (pct >= 0.65) return 'cell-l4';
+        if (pct >= 0.45) return 'cell-l3';
+        if (pct >= 0.20) return 'cell-l2';
+        return 'cell-l1';
+    }
+
+    function renderWeek(monday) {
+        // Pre-compute durations[memberIdx][dayIdx]; track max for color scale.
+        var maxDur = 0;
+        var perMember = members.map(function (m) {
+            var row = new Array(7).fill(0);
+            for (var i = 0; i < 7; i++) {
+                var ds = addDays(monday, i).getTime();
+                var de = addDays(monday, i + 1).getTime();
+                var d = 0;
+                for (var j = 0; j < m._sessions.length; j++) {
+                    d += durationOnDay(m._sessions[j], ds, de);
+                }
+                row[i] = d;
+                if (d > maxDur) maxDur = d;
+            }
+            return { member: m, row: row, total: row.reduce(function (a, b) { return a + b; }, 0) };
+        });
+
+        // Day-column totals.
+        var colTotals = new Array(7).fill(0);
+        perMember.forEach(function (rec) {
+            for (var i = 0; i < 7; i++) colTotals[i] += rec.row[i];
+        });
+        var teamTotal = colTotals.reduce(function (a, b) { return a + b; }, 0);
+
+        // Header.
+        var todayMs = startOfDay(today).getTime();
+        var headCells = '';
+        for (var i = 0; i < 7; i++) {
+            var d = addDays(monday, i);
+            var cls = 'cal-mx-head';
+            if (d.getTime() === todayMs) cls += ' today';
+            headCells += '<th class="' + cls + '">' + fmtDay.format(d) + '</th>';
+        }
+
+        // Body rows.
+        var bodyRows = '';
+        if (perMember.length === 0) {
+            bodyRows = '<tr><td colspan="9" class="muted center" style="padding: 18px;">Không có thành viên nào.</td></tr>';
+        } else {
+            perMember.forEach(function (rec) {
+                var roleBadge = rec.member.role === 'admin'
+                    ? '<span class="badge admin">admin</span>'
+                    : '<span class="badge member">member</span>';
+                var cells = '';
+                for (var i = 0; i < 7; i++) {
+                    var d = addDays(monday, i);
+                    var isFuture = d.getTime() > todayMs;
+                    var dur = rec.row[i];
+                    var cls = 'cal-mx-cell ' + intensityClass(dur, maxDur);
+                    if (isFuture) cls += ' future';
+                    if (d.getTime() === todayMs) cls += ' today';
+                    cells += '<td class="' + cls + '">' + (dur > 0 ? fmtDur(dur) : '<span class="muted">—</span>') + '</td>';
+                }
+                bodyRows += '<tr>'
+                    + '<td class="cal-mx-name"><a href="/admin/users/' + rec.member.user_id + '">' + rec.member.email + '</a> ' + roleBadge + '</td>'
+                    + cells
+                    + '<td class="cal-mx-total">' + fmtDur(rec.total) + '</td>'
+                    + '</tr>';
+            });
+        }
+
+        // Footer totals.
+        var footCells = '';
+        for (var i = 0; i < 7; i++) {
+            footCells += '<td class="cal-mx-foot">' + fmtDur(colTotals[i]) + '</td>';
+        }
+
+        var sunday = addDays(monday, 6);
+        var rangeLabel = fmtRange.format(monday) + ' → ' + fmtRange.format(sunday);
+        var isCurrent = monday.getTime() === currentMonday.getTime();
+        var weekTitle = (isCurrent ? 'Tuần này' : 'Tuần trước') + ' · ' + rangeLabel;
+
+        return '<div class="cal-mx-wrap">'
+            + '<div class="section-header" style="margin-top: 8px;">'
+            +   '<h2 style="margin: 0;">' + weekTitle + '</h2>'
+            +   '<span class="count">Tổng team: ' + fmtDur(teamTotal) + '</span>'
+            + '</div>'
+            + '<div class="table-wrap">'
+            + '<table class="data cal-mx">'
+            +   '<thead><tr>'
+            +     '<th style="min-width: 220px;">Thành viên</th>'
+            +     headCells
+            +     '<th class="cal-mx-total-h">Tổng</th>'
+            +   '</tr></thead>'
+            +   '<tbody>' + bodyRows + '</tbody>'
+            +   '<tfoot><tr>'
+            +     '<td class="cal-mx-foot">Tổng theo ngày</td>'
+            +     footCells
+            +     '<td class="cal-mx-foot cal-mx-grand">' + fmtDur(teamTotal) + '</td>'
+            +   '</tr></tfoot>'
+            + '</table>'
+            + '</div>'
+            + '</div>';
+    }
+
+    var html = '';
+    for (var w = 0; w < weeks.length; w++) html += renderWeek(weeks[w]);
+    if (!html) html = '<div class="empty"><div class="icon">📭</div><p>Chưa có dữ liệu.</p></div>';
+    root.innerHTML = html;
+})();
+</script>
+{% endblock %}

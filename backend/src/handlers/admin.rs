@@ -71,6 +71,18 @@ pub struct ScreenshotsTemplate {
 }
 
 #[derive(Template)]
+#[template(path = "admin_calendar.html")]
+pub struct AdminCalendarTemplate {
+    pub user_email: String,
+    pub member_count: usize,
+    /// JSON `[{user_id, email, role, sessions: [{started, ended}]}]` for every
+    /// user that the app counts as a member (admin OR is_member=1). Wire format
+    /// is RFC3339 UTC so the browser script can aggregate per-day duration in
+    /// the viewer's local timezone.
+    pub members_json: String,
+}
+
+#[derive(Template)]
 #[template(path = "admin_members.html")]
 pub struct AdminMembersTemplate {
     pub user_email: String,
@@ -376,6 +388,92 @@ struct CalendarEntry {
     started: String,
     /// `None` ⇒ session still ongoing; the script treats this as "ended now".
     ended: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+struct MemberCalendar {
+    user_id: String,
+    email: String,
+    /// `"admin"` or `"member"`; the script colors the row badge accordingly.
+    role: String,
+    sessions: Vec<CalendarEntry>,
+}
+
+/// GET /admin/calendar — heatmap of weekly usage across every member + admin.
+/// Same Sat/Sun → show 2 weeks rule as the per-user calendar.
+pub async fn team_calendar(
+    State(state): State<Arc<AppState>>,
+    AdminUser(u): AdminUser,
+) -> AppResult<Response> {
+    // "Members" = anyone the app would let pair a desktop / send sessions:
+    // admins (implicit members) ∪ users.is_member = 1 (env or DB allow-list
+    // resolved at login time). Users that have never logged in don't appear
+    // here, but they also can't have sessions to plot.
+    let members = sqlx::query_as::<_, (String, String, i64)>(
+        "SELECT id, email, is_admin
+         FROM users
+         WHERE is_admin = 1 OR is_member = 1
+         ORDER BY email ASC",
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    // 21-day window covers "prev week + current week" for any browser TZ
+    // (max ±14h skew between server UTC and the viewer's local clock).
+    let window_start = chrono::Utc::now() - chrono::Duration::days(21);
+    let window_start_iso = window_start.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+
+    let session_rows = sqlx::query_as::<_, (String, String, Option<String>)>(
+        "SELECT s.user_id, s.started_at, s.ended_at
+         FROM sessions s
+         JOIN users u ON u.id = s.user_id
+         WHERE (u.is_admin = 1 OR u.is_member = 1)
+           AND (s.ended_at IS NULL OR s.ended_at >= ?)
+         ORDER BY s.started_at ASC",
+    )
+    .bind(&window_start_iso)
+    .fetch_all(&state.db)
+    .await?;
+
+    let mut by_user: std::collections::HashMap<String, Vec<CalendarEntry>> =
+        std::collections::HashMap::new();
+    for (user_id, started, ended) in session_rows {
+        let started_iso = to_utc_iso(&started);
+        if started_iso.is_empty() {
+            continue;
+        }
+        let ended_iso = ended.as_deref().map(to_utc_iso).filter(|s| !s.is_empty());
+        by_user.entry(user_id).or_default().push(CalendarEntry {
+            started: started_iso,
+            ended: ended_iso,
+        });
+    }
+
+    let member_count = members.len();
+    let payload: Vec<MemberCalendar> = members
+        .into_iter()
+        .map(|(id, email, is_admin)| {
+            let sessions = by_user.remove(&id).unwrap_or_default();
+            MemberCalendar {
+                user_id: id,
+                email,
+                role: if is_admin != 0 {
+                    "admin".into()
+                } else {
+                    "member".into()
+                },
+                sessions,
+            }
+        })
+        .collect();
+    let members_json = serde_json::to_string(&payload).unwrap_or_else(|_| "[]".into());
+
+    Ok(AdminCalendarTemplate {
+        user_email: u.email,
+        member_count,
+        members_json,
+    }
+    .into_response())
 }
 
 pub async fn session_detail(
