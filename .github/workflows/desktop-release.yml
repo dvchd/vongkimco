@@ -194,19 +194,6 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # Write the signing key to a temp file so Tauri can read it.
-          # The env var TAURI_SIGNING_PRIVATE_KEY contains the raw base64
-          # of the 64-byte expanded Ed25519 key.  Tauri's CLI reads this
-          # env var but GitHub masks its value in logs, which sometimes
-          # causes issues with multiline values.  Writing to a file and
-          # pointing TAURI_SIGNING_PRIVATE_KEY_PATH to it is more reliable.
-          if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
-            KEY_FILE="$RUNNER_TEMP/tauri-signing-key"
-            printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > "$KEY_FILE"
-            export TAURI_SIGNING_PRIVATE_KEY_PATH="$KEY_FILE"
-            unset TAURI_SIGNING_PRIVATE_KEY
-            echo "Signing key written to file ($(wc -c < "$KEY_FILE") bytes)"
-          fi
           # On macOS, if no Apple cert is configured, unset the signing
           # env vars so Tauri falls back to signingIdentity in tauri.conf.json.
           if [ "$(uname)" = "Darwin" ] && [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
