@@ -94,7 +94,10 @@ pub async fn get_server_info(state: State<'_, AppState>) -> CmdResult<Value> {
         .build()
         .map_err(err)?;
     let resp = client
-        .get(format!("{}/api/v1/server-info", server.trim_end_matches('/')))
+        .get(format!(
+            "{}/api/v1/server-info",
+            server.trim_end_matches('/')
+        ))
         .send()
         .await
         .map_err(err)?;
