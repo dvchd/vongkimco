@@ -9,10 +9,6 @@ on:
       version_override:
         description: "Version override (e.g. 0.3.0)"
         required: false
-      include_macos_intel:
-        description: "Build macOS Intel (x86_64) — legacy, off by default"
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -57,7 +53,12 @@ jobs:
           fi
           echo "✅ All versions match: $VERSION"
 
-  # ─── Build matrix ──────────────────────────────────────────────────
+  # ─── Build matrix (3 platforms) ────────────────────────────────────
+  # macOS Intel (x86_64) is NOT included by default.
+  # Apple stopped selling Intel Macs in 2022; by 2026 most active Macs
+  # are Apple Silicon (M1/M2/M3/M4).  If you need Intel builds, run:
+  #   npx @tauri-apps/cli build --target x86_64-apple-darwin
+  # locally on an Intel Mac, then upload the artifacts manually.
   build:
     needs: verify-version
     strategy:
@@ -73,18 +74,6 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: windows
-          # macOS Intel (legacy) — only built when explicitly requested
-          # via workflow_dispatch with include_macos_intel=true.
-          # Apple stopped selling Intel Macs in 2022; by 2026 most active
-          # Macs are Apple Silicon.  Keeping this as opt-in for the few
-          # users who still need it.
-          - os: macos-13
-            target: x86_64-apple-darwin
-            artifact: macos-intel
-            legacy: true
-
-    # Skip macOS Intel unless manually requested
-    if: ${{ !matrix.legacy || inputs.include_macos_intel == true }}
 
     runs-on: ${{ matrix.os }}
     defaults:
@@ -185,15 +174,6 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          # When no Apple developer certificate is configured, use ad-hoc signing
-          # so the .app bundle can still be created.  Ad-hoc signed apps won't
-          # pass Gatekeeper on others' machines but work fine for development
-          # and for the Tauri updater (which verifies its own Ed25519 sig).
-          #
-          # CRITICAL: We set signingIdentity in tauri.conf.json AND we must
-          # NOT set APPLE_SIGNING_IDENTITY env var (even as empty string),
-          # because Tauri's bundler prioritises the env var over the config
-          # and an empty string makes codesign fail with "identity not found".
           node -e "
             const fs = require('fs');
             const p = 'src-tauri/tauri.conf.json';
@@ -217,8 +197,6 @@ jobs:
         run: |
           # On macOS, if no Apple cert is configured, unset the signing
           # env vars so Tauri falls back to signingIdentity in tauri.conf.json.
-          # Empty APPLE_SIGNING_IDENTITY="" makes codesign fail with
-          # "The specified item could not be found in the keychain".
           if [ "$(uname)" = "Darwin" ] && [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
             unset APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
             echo "No Apple cert — using ad-hoc signing from tauri.conf.json"
@@ -293,7 +271,6 @@ jobs:
           # Try to find CHANGELOG entry for this version
           VERSION="${GITHUB_REF_NAME#desktop-v}"
           if [ -f CHANGELOG.md ]; then
-            # Extract section for this version
             NOTES=$(sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | head -n -1 | tail -n +2)
           fi
           if [ -z "$NOTES" ]; then
