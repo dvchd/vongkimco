@@ -163,6 +163,10 @@ fn enrich_release_info(mut data: Value) -> Value {
     // build a top-level "download_urls" map for easy frontend access.
     let mut download_urls = serde_json::Map::new();
 
+    // Collect updates first to avoid borrowing `platforms` mutably and
+    // immutably at the same time (E0502).
+    let mut updates: Vec<(String, Value)> = Vec::new();
+
     for (key, val) in platforms.iter() {
         let url = val["url"].as_str().unwrap_or("");
 
@@ -178,7 +182,7 @@ fn enrich_release_info(mut data: Value) -> Value {
         if let Some(obj) = val.as_object() {
             let mut enriched = obj.clone();
             enriched.insert("installer_url".into(), json!(installer_url));
-            *platforms.get_mut(key).unwrap() = Value::Object(enriched);
+            updates.push((key.clone(), Value::Object(enriched)));
         }
 
         // Top-level convenience key (macos / linux / windows)
@@ -199,6 +203,11 @@ fn enrich_release_info(mut data: Value) -> Value {
                 }),
             );
         }
+    }
+
+    // Apply collected updates
+    for (key, val) in updates {
+        platforms.insert(key, val);
     }
 
     // Add download_urls to the top level
