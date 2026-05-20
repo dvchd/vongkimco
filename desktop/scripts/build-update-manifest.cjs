@@ -45,13 +45,17 @@ const files = walk(artifactsDir);
 // Bundle file patterns matched per (platform, arch). The first regex that hits
 // a real file wins; we expect a sibling <filename>.sig for the signature.
 //
-// Tauri 2 bundlers produce:
-//   macOS:   <name>_<version>_<arch>.app.tar.gz  (+ .sig)
-//   Windows: <name>_<version>_x64-setup.exe or _en-US.msi  (+ .sig)
-//   Linux:   <name>_<version>_amd64.AppImage  (+ .sig)
+// Tauri 2 with createUpdaterArtifacts:true produces:
+//   macOS:   <Product>.app.tar.gz  (+ .sig)  — NO arch suffix in v2!
+//   Windows: <Product>_<ver>_x64-setup.exe  (+ .sig)
+//   Linux:   <Product>_<ver>_amd64.AppImage  (+ .sig)
+//
+// NOTE: When both darwin-aarch64 and darwin-x86_64 are present (e.g. universal
+// or dual builds), the arch-specific patterns must come BEFORE the fallback
+// pattern to ensure correct matching.
 const PATTERNS = {
     "darwin-x86_64": [/_(x64|x86_64)\.app\.tar\.gz$/i],
-    "darwin-aarch64": [/_(aarch64|arm64)\.app\.tar\.gz$/i],
+    "darwin-aarch64": [/_(aarch64|arm64)\.app\.tar\.gz$/i, /\.app\.tar\.gz$/i],
     "linux-x86_64": [/_(amd64|x86_64|x64)\.AppImage$/i, /\.AppImage$/i],
     "windows-x86_64": [/_(x64|x86_64)[^.]*-setup\.exe$/i, /_(x64|x86_64)[^.]*\.msi$/i, /-setup\.exe$/i, /\.msi$/i],
     "windows-aarch64": [/_(arm64|aarch64)[^.]*-setup\.exe$/i, /_(arm64|aarch64)[^.]*\.msi$/i],
