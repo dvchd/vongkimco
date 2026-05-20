@@ -6,6 +6,12 @@
 # The backend image is built and pushed to ghcr.io by GitHub Actions
 # on every push to main. Coolify only needs to pull the image —
 # no local build required.
+#
+# SETUP:
+#   1. In Coolify: disable "Git push" deploy trigger
+#   2. In Coolify: copy the Webhook URL from Application → Configuration → Deployment
+#   3. In GitHub: add COOLIFY_WEBHOOK_URL as a repository Variable (Settings → Secrets → Variables)
+#   4. GitHub Actions will call the webhook AFTER pushing the image to ghcr.io
 
 services:
     backend:
@@ -22,8 +28,6 @@ services:
             # Comma-separated admin email allow-list.
             ADMIN_EMAILS: ${ADMIN_EMAILS:-dvcuong.hust@gmail.com}
             # Comma-separated member email allow-list (admins are implicit).
-            # More members can be added at runtime via /admin/members or by
-            # approving requests submitted by guests.
             MEMBER_EMAILS: ${MEMBER_EMAILS:-hoctuthien11@gmail.com,dhammacode@gmail.com}
             # Contact info shown on the "pending approval" / feedback pages.
             MAINTAINER_FACEBOOK: ${MAINTAINER_FACEBOOK:-https://fb.com/dvcuong.hust}

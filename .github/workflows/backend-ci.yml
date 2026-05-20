@@ -69,3 +69,15 @@ jobs:
                   labels: ${{ steps.meta.outputs.labels }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
+
+            # ── Trigger Coolify to pull the new image and deploy ──────
+            # Only runs AFTER the image is pushed to ghcr.io.
+            # Set COOLIFY_WEBHOOK_URL in GitHub Secrets:
+            #   Coolify UI → Project → Environment → Application → Configuration
+            #   → Deployment → "Webhook URL" (copy the full URL)
+            - name: Trigger Coolify deploy
+              if: vars.COOLIFY_WEBHOOK_URL != ''
+              run: |
+                  echo "Triggering Coolify deploy..."
+                  curl -sfS -o /dev/null -w "HTTP %{http_code}" \
+                       -X POST "${{ vars.COOLIFY_WEBHOOK_URL }}" || echo "⚠️ Coolify webhook failed (non-blocking)"
