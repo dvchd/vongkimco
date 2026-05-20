@@ -138,8 +138,9 @@ git tag desktop-v0.1.0
 git push origin desktop-v0.1.0
 ```
 Workflow `.github/workflows/desktop-release.yml` sẽ:
-- Build cho `windows-msvc`, `macos-intel`, `macos-arm`, `linux-gnu` song song.
-- Sinh các bundle: `.msi` / `.exe` (Win), `.dmg` (macOS), `.AppImage` + `.deb` (Linux).
+- Build cho `windows-msvc`, `macos-arm` (Apple Silicon), `linux-gnu` song song.
+- macOS Intel (`macos-intel`) là **legacy**, chỉ build khi chọn `include_macos_intel` trong workflow_dispatch.
+- Sinh các bundle: `.msi` / `.exe` (Win), `.dmg` / `.app.tar.gz` (macOS ARM), `.AppImage` + `.deb` (Linux).
 - Ký bundle bằng `TAURI_SIGNING_PRIVATE_KEY` (mỗi file kèm `.sig`).
 - Tạo GitHub Release đính kèm tất cả artifact (gồm cả `.sig`).
 
@@ -153,9 +154,9 @@ Desktop tự kiểm tra bản mới khi khởi động và có nút "Kiểm tra 
 key nhúng trong app trước khi ghi đè.
 
 ### Pipeline hoạt động
-1. CI build desktop bundle cho 4 nền tảng song song, ký bằng
+1. CI build desktop bundle cho 3 nền tảng song song (Linux, macOS ARM, Windows), ký bằng
    `TAURI_SIGNING_PRIVATE_KEY` → mỗi `.msi / .app.tar.gz / .AppImage` đi kèm một
-   file `.sig` cùng tên.
+   file `.sig` cùng tên. macOS Intel (legacy) chỉ build khi chọn thủ công.
 2. Sau khi toàn bộ matrix xong, **release job** tải tất cả artifact về, chạy
    [`build-update-manifest.cjs`](desktop/scripts/build-update-manifest.cjs) để
    gộp metadata + URL download GitHub + nội dung từng `.sig` thành một file
