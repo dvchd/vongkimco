@@ -26,6 +26,10 @@ type SessionRow = (
     Option<String>,
 );
 
+/// Full activity row from the DB join: (local_id, local_session_id, remote_session_id,
+/// sampled_at, state, idle_seconds, keyboard_events, mouse_events).
+type ActivityRow = (String, String, String, String, String, i64, i64, i64);
+
 /// One activity sample queued for upload, keyed by remote session id.
 /// Fields after `local_id`: (sampled_at, state, idle_seconds, keyboard_events, mouse_events).
 type ActivityItem = (String, String, String, i64, i64, i64);
@@ -193,7 +197,7 @@ async fn push_sessions(state: &AppState, server: &str, token: &str) -> Result<()
 
 async fn push_activity_samples(state: &AppState, server: &str, token: &str) -> Result<()> {
     loop {
-        let rows: Vec<(String, String, String, String, String, i64, i64, i64)> =
+        let rows: Vec<ActivityRow> =
             state.db.with(|c| {
                 let mut stmt = c.prepare(
                     "SELECT a.id, a.session_id, s.remote_id, a.sampled_at, a.state, a.idle_seconds, a.keyboard_events, a.mouse_events
