@@ -196,18 +196,15 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS notarization — only set when Apple cert is configured.
-          # Empty env vars override tauri.conf.json, causing codesign failure.
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '' }}
-          APPLE_ID: ${{ secrets.APPLE_ID || '' }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '' }}
-          # Tell Tauri to use the signingIdentity from tauri.conf.json instead
-          # of the (empty) APPLE_SIGNING_IDENTITY env var.
-          CI: "1"
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           # On macOS, if no Apple cert is configured, unset the signing
           # env vars so Tauri falls back to signingIdentity in tauri.conf.json.
+          # Empty APPLE_SIGNING_IDENTITY="" makes codesign fail with
+          # "The specified item could not be found in the keychain".
           if [ "$(uname)" = "Darwin" ] && [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
             unset APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
             echo "No Apple cert — using ad-hoc signing from tauri.conf.json"
