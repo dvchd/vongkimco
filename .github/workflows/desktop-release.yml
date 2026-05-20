@@ -168,11 +168,36 @@ jobs:
             console.log('Injected updater config:', JSON.stringify(cfg.plugins.updater, null, 2));
           "
 
+      - name: Configure macOS ad-hoc signing (no Apple cert)
+        if: runner.os == 'macOS' && env.APPLE_CERTIFICATE == ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        shell: bash
+        run: |
+          # When no Apple developer certificate is configured, use ad-hoc signing
+          # so the .app bundle can still be created.  Ad-hoc signed apps won't
+          # pass Gatekeeper on others' machines but work fine for development
+          # and for the Tauri updater (which verifies its own Ed25519 sig).
+          echo "No Apple certificate configured — using ad-hoc codesigning"
+          cat >> src-tauri/tauri.conf.json.bak << 'PATCH'
+          # backup handled by jq-like node script below
+          PATCH
+          node -e "
+            const fs = require('fs');
+            const p = 'src-tauri/tauri.conf.json';
+            const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
+            cfg.bundle = cfg.bundle || {};
+            cfg.bundle.macOS = cfg.bundle.macOS || {};
+            cfg.bundle.macOS.signingIdentity = '-';
+            fs.writeFileSync(p, JSON.stringify(cfg, null, 4));
+            console.log('Set macOS signingIdentity to - (ad-hoc)');
+          "
+
       - name: Tauri build (signed)
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS notarization
+          # macOS notarization (only effective when Apple cert is configured)
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
