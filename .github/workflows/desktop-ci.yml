@@ -71,7 +71,11 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
         working-directory: desktop/src-tauri
 
+  # Full Linux build — only on main push (not PRs) to save CI minutes.
+  # If clippy passes, the build will almost certainly succeed; this
+  # job catches rare linker/bundler issues that clippy cannot detect.
   build-linux:
+    if: github.event_name == 'push'
     needs: [lint-frontend, lint-rust]
     runs-on: ubuntu-22.04
     defaults:

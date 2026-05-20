@@ -114,23 +114,17 @@ async fn fetch_github_api(state: &AppState) -> anyhow::Result<Value> {
             if name.ends_with(".app.tar.gz")
                 || name.ends_with(".AppImage")
                 || name.ends_with("-setup.exe")
-                || name.ends_with(".msi")
             {
                 // Determine platform key
                 let key = if name.contains(".app.tar.gz") {
                     "darwin-aarch64".to_string()
                 } else if name.ends_with(".AppImage") {
                     "linux-x86_64".to_string()
-                } else if name.ends_with("-setup.exe") || name.ends_with(".msi") {
+                } else if name.ends_with("-setup.exe") {
                     "windows-x86_64".to_string()
                 } else {
                     continue;
                 };
-
-                // Only take the first match per platform (prefer .exe over .msi)
-                if platforms.contains_key(&key) {
-                    continue;
-                }
 
                 platforms.insert(key, json!({ "url": url }));
             }

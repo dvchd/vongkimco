@@ -57,8 +57,8 @@ const PATTERNS = {
     "darwin-x86_64": [/_(x64|x86_64)\.app\.tar\.gz$/i],
     "darwin-aarch64": [/_(aarch64|arm64)\.app\.tar\.gz$/i, /\.app\.tar\.gz$/i],
     "linux-x86_64": [/_(amd64|x86_64|x64)\.AppImage$/i, /\.AppImage$/i],
-    "windows-x86_64": [/_(x64|x86_64)[^.]*-setup\.exe$/i, /_(x64|x86_64)[^.]*\.msi$/i, /-setup\.exe$/i, /\.msi$/i],
-    "windows-aarch64": [/_(arm64|aarch64)[^.]*-setup\.exe$/i, /_(arm64|aarch64)[^.]*\.msi$/i],
+    "windows-x86_64": [/_(x64|x86_64)[^.]*-setup\.exe$/i, /-setup\.exe$/i],
+    "windows-aarch64": [/_(arm64|aarch64)[^.]*-setup\.exe$/i],
     "linux-aarch64": [/_(arm64|aarch64)\.AppImage$/i],
 };
 

@@ -213,9 +213,8 @@ jobs:
             find "$BUNDLE_DIR" -type f \( \
                 -name "*.dmg" -o -name "*.app.tar.gz" -o \
                 -name "*.AppImage" -o -name "*.AppImage.tar.gz" -o \
-                -name "*.deb" -o -name "*.rpm" -o \
-                -name "*.msi" -o -name "*.exe" -o \
-                -name "*.nsis.zip" -o -name "*.msi.zip" -o \
+                -name "*.deb" -o \
+                -name "*.exe" -o -name "*.nsis.zip" -o \
                 -name "*.sig" \
             \) -exec cp -v {} out/ \;
           fi
