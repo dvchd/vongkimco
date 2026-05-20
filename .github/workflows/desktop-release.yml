@@ -169,19 +169,18 @@ jobs:
           "
 
       - name: Configure macOS ad-hoc signing (no Apple cert)
-        if: runner.os == 'macOS' && env.APPLE_CERTIFICATE == ''
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           # When no Apple developer certificate is configured, use ad-hoc signing
           # so the .app bundle can still be created.  Ad-hoc signed apps won't
           # pass Gatekeeper on others' machines but work fine for development
           # and for the Tauri updater (which verifies its own Ed25519 sig).
-          echo "No Apple certificate configured — using ad-hoc codesigning"
-          cat >> src-tauri/tauri.conf.json.bak << 'PATCH'
-          # backup handled by jq-like node script below
-          PATCH
+          #
+          # CRITICAL: We set signingIdentity in tauri.conf.json AND we must
+          # NOT set APPLE_SIGNING_IDENTITY env var (even as empty string),
+          # because Tauri's bundler prioritises the env var over the config
+          # and an empty string makes codesign fail with "identity not found".
           node -e "
             const fs = require('fs');
             const p = 'src-tauri/tauri.conf.json';
@@ -197,12 +196,23 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS notarization (only effective when Apple cert is configured)
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npx @tauri-apps/cli build --target ${{ matrix.target }}
+          # macOS notarization — only set when Apple cert is configured.
+          # Empty env vars override tauri.conf.json, causing codesign failure.
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '' }}
+          APPLE_ID: ${{ secrets.APPLE_ID || '' }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '' }}
+          # Tell Tauri to use the signingIdentity from tauri.conf.json instead
+          # of the (empty) APPLE_SIGNING_IDENTITY env var.
+          CI: "1"
+        run: |
+          # On macOS, if no Apple cert is configured, unset the signing
+          # env vars so Tauri falls back to signingIdentity in tauri.conf.json.
+          if [ "$(uname)" = "Darwin" ] && [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            unset APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
+            echo "No Apple cert — using ad-hoc signing from tauri.conf.json"
+          fi
+          npx @tauri-apps/cli build --target ${{ matrix.target }}
 
       - name: Collect bundles + signatures
         shell: bash
