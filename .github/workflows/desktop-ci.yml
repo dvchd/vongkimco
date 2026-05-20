@@ -98,4 +98,18 @@ jobs:
             patchelf
       - run: npm install
       - run: npx @tauri-apps/cli icon ../backend/static/app-icon.svg -o src-tauri/icons
+      # CI builds don't need signed updater artifacts. Remove the pubkey
+      # and updater-artifact flag so Tauri doesn't demand TAURI_SIGNING_PRIVATE_KEY.
+      - name: Strip updater signing config for CI build
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const p = 'src-tauri/tauri.conf.json';
+            const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
+            if (cfg.bundle) delete cfg.bundle.createUpdaterArtifacts;
+            if (cfg.plugins && cfg.plugins.updater) delete cfg.plugins.updater.pubkey;
+            fs.writeFileSync(p, JSON.stringify(cfg, null, 4));
+            console.log('Stripped updater signing config for CI build');
+          "
       - run: npx @tauri-apps/cli build
