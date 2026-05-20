@@ -71,13 +71,24 @@ jobs:
                   cache-to: type=gha,mode=max
 
             # ── Trigger Coolify to pull the new image and deploy ──────
-            # Only runs AFTER the image is pushed to ghcr.io.
-            # Set COOLIFY_WEBHOOK_URL in GitHub Secrets:
-            #   Coolify UI → Project → Environment → Application → Configuration
-            #   → Deployment → "Webhook URL" (copy the full URL)
+            # Runs AFTER the image is pushed to ghcr.io.
+            #
+            # Required GitHub Secrets:
+            #   COOLIFY_TOKEN  — API token from Coolify (Settings → Keys & Tokens → API Tokens)
+            #   COOLIFY_APP_UUID — Application UUID from Coolify (Application → Configuration → General)
+            #   COOLIFY_BASE_URL — Your Coolify instance URL, e.g. https://coolify.example.com
+            #
+            # See: https://coolify.io/docs/api-reference/api/operations/deploy-by-tag-or-uuid
             - name: Trigger Coolify deploy
-              if: vars.COOLIFY_WEBHOOK_URL != ''
+              if: secrets.COOLIFY_TOKEN != '' && secrets.COOLIFY_APP_UUID != ''
               run: |
                   echo "Triggering Coolify deploy..."
-                  curl -sfS -o /dev/null -w "HTTP %{http_code}" \
-                       -X POST "${{ vars.COOLIFY_WEBHOOK_URL }}" || echo "⚠️ Coolify webhook failed (non-blocking)"
+                  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+                    -X POST \
+                    -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+                    -H "Content-Type: application/json" \
+                    "${{ secrets.COOLIFY_BASE_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}")
+                  echo "Coolify API responded: HTTP $HTTP_CODE"
+                  if [ "$HTTP_CODE" -ge 400 ]; then
+                    echo "⚠️ Coolify deploy trigger failed (HTTP $HTTP_CODE)"
+                  fi

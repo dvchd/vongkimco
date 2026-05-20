@@ -7,11 +7,27 @@
 # on every push to main. Coolify only needs to pull the image —
 # no local build required.
 #
-# SETUP:
-#   1. In Coolify: disable "Git push" deploy trigger
-#   2. In Coolify: copy the Webhook URL from Application → Configuration → Deployment
-#   3. In GitHub: add COOLIFY_WEBHOOK_URL as a repository Variable (Settings → Secrets → Variables)
-#   4. GitHub Actions will call the webhook AFTER pushing the image to ghcr.io
+# ── SETUP COOLIFY DEPLOY FROM GITHUB ACTIONS ─────────────────────────
+#
+# 1. In Coolify: disable "Git push" auto-deploy trigger
+#    (Application → Configuration → Deployment → uncheck "Auto Deploy")
+#
+# 2. Create an API token in Coolify:
+#    Settings → Keys & Tokens → API Tokens tab → "Create New Token"
+#    - Name: "github-actions"
+#    - Permissions: check "Deploy"
+#    - Copy the token (shown only once!)
+#
+# 3. Find your Application UUID in Coolify:
+#    Application → Configuration → General → UUID (top of page)
+#
+# 4. Add these as GitHub Secrets (repo Settings → Secrets → Actions):
+#    COOLIFY_TOKEN       = the API token from step 2
+#    COOLIFY_APP_UUID    = the application UUID from step 3
+#    COOLIFY_BASE_URL    = your Coolify instance URL (e.g. https://coolify.yourdomain.com)
+#
+# 5. Make ghcr.io package public (if Coolify has no Docker login):
+#    GitHub → Packages → vongkimco-backend → Package settings → Change visibility → Public
 
 services:
     backend:
