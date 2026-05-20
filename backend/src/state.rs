@@ -111,10 +111,15 @@ impl Config {
 pub struct AppState {
     pub config: Config,
     pub db: SqlitePool,
+    pub http_client: reqwest::Client,
 }
 
 impl AppState {
     pub fn new(config: Config, db: SqlitePool) -> Self {
-        Self { config, db }
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .build()
+            .expect("Failed to create HTTP client");
+        Self { config, db, http_client }
     }
 }

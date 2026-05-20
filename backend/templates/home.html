@@ -45,6 +45,23 @@
         .role-table th, .role-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: top; }
         .role-table th { background: var(--surface-2); color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
         .role-table tr:last-child td { border-bottom: none; }
+        .download-hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; line-height: 1.5; }
+        .download-hint a { color: var(--primary); text-decoration: none; }
+        .download-hint a:hover { text-decoration: underline; }
+        .download-platforms { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+        .download-platforms a {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+            text-decoration: none; border: 1px solid var(--border);
+            background: var(--surface); color: var(--text);
+            transition: border-color 0.12s ease, background 0.12s ease;
+        }
+        .download-platforms a:hover { border-color: var(--border-strong); background: var(--surface-2); }
+        .download-platforms a.primary-platform {
+            background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 600;
+        }
+        .download-platforms a.primary-platform:hover { background: var(--primary-strong); }
+        .download-platforms .plat-icon { font-size: 16px; }
     </style>
 </head>
 <body>
@@ -86,12 +103,13 @@
             {% match viewer %}
             {% when Some with (v) %}
                 <a href="{{ v.destination }}" class="btn-primary">Vào trang của tôi</a>
-                <a href="https://github.com/dvchd/vongkimco/releases/latest" target="_blank" rel="noopener" class="btn-secondary">Tải desktop app</a>
             {% when None %}
                 <a href="/admin/oauth/start" class="btn-primary">Đăng nhập bằng Google</a>
-                <a href="https://github.com/dvchd/vongkimco/releases/latest" target="_blank" rel="noopener" class="btn-secondary">Tải desktop app</a>
             {% endmatch %}
+            <a id="download-btn" href="https://github.com/dvchd/vongkimco/releases/latest" target="_blank" rel="noopener" class="btn-secondary">Tải desktop app</a>
         </div>
+        <div id="download-platforms" class="download-platforms" style="display:none;"></div>
+        <p id="download-hint" class="download-hint" style="display:none;"></p>
     </section>
 
     <h2>Tính năng chính</h2>
@@ -159,6 +177,7 @@
 </footer>
 <script>
     (function () {
+        // Theme picker
         var buttons = document.querySelectorAll('[data-theme-set]');
         if (!buttons.length) return;
         var root = document.documentElement;
@@ -193,6 +212,111 @@
             if (mq.addEventListener) mq.addEventListener('change', handler);
             else if (mq.addListener) mq.addListener(handler);
         }
+    })();
+
+    // ── Platform-aware download buttons ──────────────────────────
+    (function () {
+        var GITHUB_REPO = 'dvchd/vongkimco';
+        var RELEASES_BASE = 'https://github.com/' + GITHUB_REPO + '/releases/latest';
+
+        var btn = document.getElementById('download-btn');
+        var container = document.getElementById('download-platforms');
+        var hint = document.getElementById('download-hint');
+        if (!btn || !container) return;
+
+        function detectPlatform() {
+            var ua = navigator.userAgent || navigator.platform || '';
+            if (/Win(dows|32|64|CE)/i.test(ua)) return 'windows';
+            if (/Mac|iPhone|iPad|iPod/i.test(ua)) return 'macos';
+            if (/Linux|X11|CrOS/i.test(ua)) return 'linux';
+            if (/Android/i.test(ua)) return 'linux';
+            return null;
+        }
+
+        var platformMeta = {
+            windows: { icon: '🪟', label: 'Windows', hint: 'Windows 10+', extLabel: '.exe' },
+            macos:   { icon: '🍎', label: 'macOS',   hint: 'Apple Silicon (M1+)', extLabel: '.dmg' },
+            linux:   { icon: '🐧', label: 'Linux',   hint: 'x86_64', extLabel: '.AppImage' }
+        };
+
+        var detected = detectPlatform();
+
+        function renderButtons(downloadUrls, version) {
+            // Build platform buttons
+            var html = '';
+            var order = ['windows', 'macos', 'linux'];
+            for (var i = 0; i < order.length; i++) {
+                var pid = order[i];
+                var meta = platformMeta[pid];
+                var entry = downloadUrls[pid];
+                var isPrimary = (pid === detected);
+                var cls = isPrimary ? 'primary-platform' : '';
+                var href = entry ? entry.url : RELEASES_BASE;
+                html += '<a href="' + href + '" class="' + cls + '" target="_blank" rel="noopener" title="' + meta.hint + '">';
+                html += '<span class="plat-icon">' + meta.icon + '</span>';
+                html += '<span>' + meta.label + '</span>';
+                if (version) {
+                    html += '<small style="opacity:0.7;font-weight:400;">v' + version + '</small>';
+                } else {
+                    html += '<small style="opacity:0.7;font-weight:400;">' + meta.extLabel + '</small>';
+                }
+                html += '</a>';
+            }
+            container.innerHTML = html;
+            container.style.display = 'flex';
+
+            // Update the main download button for detected platform
+            if (detected && downloadUrls[detected]) {
+                var dp = downloadUrls[detected];
+                var meta2 = platformMeta[detected];
+                btn.href = dp.url;
+                btn.textContent = 'Tải ' + meta2.label + ' v' + (version || '');
+                btn.className = 'btn-primary';
+            }
+
+            // Show hint
+            if (hint) {
+                hint.style.display = 'block';
+                if (detected) {
+                    var meta3 = platformMeta[detected];
+                    hint.innerHTML = 'Đã phát hiện nền tảng <strong>' + meta3.label + '</strong> (' + meta3.hint + '). ' +
+                        'Hoặc <a href="' + RELEASES_BASE + '" target="_blank" rel="noopener">xem tất cả phiên bản</a>.';
+                } else {
+                    hint.innerHTML = '<a href="' + RELEASES_BASE + '" target="_blank" rel="noopener">Xem tất cả phiên bản</a> trên GitHub.';
+                }
+            }
+        }
+
+        // Fetch release info from our backend proxy (no CORS issues, cached)
+        fetch('/api/v1/desktop/latest')
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                var version = data.version || '';
+                var downloadUrls = data.download_urls || {};
+
+                // If download_urls is empty, try to derive from platforms
+                if (!Object.keys(downloadUrls).length && data.platforms) {
+                    for (var key in data.platforms) {
+                        var pid = null;
+                        if (key.indexOf('windows') === 0) pid = 'windows';
+                        else if (key.indexOf('darwin') === 0) pid = 'macos';
+                        else if (key.indexOf('linux') === 0) pid = 'linux';
+                        if (pid && !downloadUrls[pid]) {
+                            var p = data.platforms[key];
+                            downloadUrls[pid] = { url: p.installer_url || p.url };
+                        }
+                    }
+                }
+
+                renderButtons(downloadUrls, version);
+            })
+            .catch(function () {
+                // Fallback: show generic links
+                renderButtons({}, '');
+            });
     })();
 </script>
 </body>

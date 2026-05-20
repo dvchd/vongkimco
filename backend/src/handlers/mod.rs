@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod auth_api;
 pub mod desktop_auth;
+pub mod desktop_release;
 pub mod device_api;
 pub mod feedback;
 pub mod health;
