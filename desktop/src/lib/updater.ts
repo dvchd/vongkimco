@@ -13,8 +13,38 @@ export interface UpdateState {
 export const updateState = writable<UpdateState>({ status: "idle" });
 let current: Update | null = null;
 
-export async function checkForUpdate(options: { silent?: boolean } = {}) {
-    const { silent = false } = options;
+// ── Periodic check ──────────────────────────────────────────────────
+let periodicTimer: ReturnType<typeof setInterval> | null = null;
+const DEFAULT_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+export function startPeriodicCheck(options: {
+    intervalMs?: number;
+    autoDownload?: boolean;
+} = {}) {
+    const { intervalMs = DEFAULT_CHECK_INTERVAL_MS, autoDownload = false } = options;
+    stopPeriodicCheck();
+
+    // Check immediately on start
+    checkForUpdate({ silent: true, autoDownload });
+
+    periodicTimer = setInterval(() => {
+        checkForUpdate({ silent: true, autoDownload });
+    }, intervalMs);
+}
+
+export function stopPeriodicCheck() {
+    if (periodicTimer !== null) {
+        clearInterval(periodicTimer);
+        periodicTimer = null;
+    }
+}
+
+// ── Check for update ────────────────────────────────────────────────
+export async function checkForUpdate(options: {
+    silent?: boolean;
+    autoDownload?: boolean;
+} = {}) {
+    const { silent = false, autoDownload = false } = options;
     if (!silent) updateState.set({ status: "checking" });
     try {
         const update = await check();
@@ -25,6 +55,10 @@ export async function checkForUpdate(options: { silent?: boolean } = {}) {
                 version: update.version,
                 notes: update.body ?? undefined
             });
+            // Auto-download if enabled
+            if (autoDownload) {
+                await downloadAndInstall();
+            }
             return true;
         } else {
             current = null;
@@ -37,6 +71,7 @@ export async function checkForUpdate(options: { silent?: boolean } = {}) {
     }
 }
 
+// ── Download & install ──────────────────────────────────────────────
 export async function downloadAndInstall() {
     if (!current) return;
     let downloaded = 0;

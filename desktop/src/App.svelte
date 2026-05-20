@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { getVersion } from "@tauri-apps/api/app";
     import {
         loadSettings,
         loadPolicy,
@@ -19,9 +20,10 @@
     import ServerSelect from "./routes/ServerSelect.svelte";
     import History from "./routes/History.svelte";
     import UpdateBanner from "./lib/UpdateBanner.svelte";
-    import { checkForUpdate } from "./lib/updater";
+    import { checkForUpdate, startPeriodicCheck } from "./lib/updater";
 
     let booted = false;
+    let appVersion = "";
 
     onMount(async () => {
         await loadSettings();
@@ -46,6 +48,13 @@
         // Silent update check on startup. Errors stay silent here; the
         // Settings page has an explicit "Check for update" button.
         checkForUpdate({ silent: true }).catch(() => {});
+
+        // Start periodic background check every 4 hours (auto-download disabled,
+        // user must click "Install & restart")
+        startPeriodicCheck({ intervalMs: 4 * 60 * 60 * 1000, autoDownload: false });
+
+        // Fetch app version from Tauri
+        try { appVersion = await getVersion(); } catch {}
     });
 
     function go(r: string) {
@@ -105,7 +114,7 @@
                         {$sessionState.online ? "Online" : "Offline"}
                     </span>
                 </div>
-                <div class="muted small" style="margin-top: 8px;">v0.1.0 · OSS</div>
+                <div class="muted small" style="margin-top: 8px;">v{appVersion || "?"} · OSS</div>
             </div>
         </aside>
         <main class="main">

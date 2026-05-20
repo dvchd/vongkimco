@@ -1,168 +1,266 @@
 name: Desktop — build & release
 
 on:
-    push:
-        tags:
-            - "desktop-v*"
-    workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+    inputs:
+      version_override:
+        description: "Version override (e.g. 0.3.0)"
+        required: false
 
 permissions:
-    contents: write
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    build:
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - os: ubuntu-22.04
-                      target: x86_64-unknown-linux-gnu
-                      artifact: linux
-                    - os: macos-13
-                      target: x86_64-apple-darwin
-                      artifact: macos-intel
-                    - os: macos-14
-                      target: aarch64-apple-darwin
-                      artifact: macos-arm
-                    - os: windows-latest
-                      target: x86_64-pc-windows-msvc
-                      artifact: windows
+  # ─── Verify version consistency across all config files ─────────────
+  verify-version:
+    if: startsWith(github.ref, 'refs/tags/desktop-v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract and validate version
+        id: extract
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version_override }}" ]; then
+            VERSION="${{ inputs.version_override }}"
+          else
+            VERSION="${GITHUB_REF_NAME#desktop-v}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "📦 Release version: $VERSION"
 
-        runs-on: ${{ matrix.os }}
-        defaults:
-            run:
-                working-directory: desktop
+          # Verify consistency across all version files
+          PKG_VER=$(node -p "require('./desktop/package.json').version")
+          CARGO_VER=$(grep '^version' desktop/src-tauri/Cargo.toml | head -1 | cut -d'"' -f2)
+          TAURI_VER=$(node -p "require('./desktop/src-tauri/tauri.conf.json').version")
 
-        steps:
-            - uses: actions/checkout@v4
+          echo "  package.json:  $PKG_VER"
+          echo "  Cargo.toml:    $CARGO_VER"
+          echo "  tauri.conf.json: $TAURI_VER"
 
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-                  cache: npm
-                  cache-dependency-path: desktop/package-lock.json
+          if [ "$PKG_VER" != "$VERSION" ] || [ "$CARGO_VER" != "$VERSION" ] || [ "$TAURI_VER" != "$VERSION" ]; then
+            echo "❌ Version mismatch! Tag says $VERSION but files disagree."
+            echo "   Run: node desktop/scripts/bump-version.cjs $VERSION"
+            exit 1
+          fi
+          echo "✅ All versions match: $VERSION"
 
-            - name: Setup Rust
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  targets: ${{ matrix.target }}
+  # ─── Build matrix ──────────────────────────────────────────────────
+  build:
+    needs: verify-version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            artifact: linux
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: macos-intel
+          - os: macos-14
+            target: aarch64-apple-darwin
+            artifact: macos-arm
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: windows
 
-            - name: Rust cache
-              uses: Swatinem/rust-cache@v2
-              with:
-                  workspaces: desktop/src-tauri
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
 
-            - name: Linux build deps
-              if: runner.os == 'Linux'
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y \
-                      libwebkit2gtk-4.1-dev \
-                      libssl-dev \
-                      libgtk-3-dev \
-                      libayatana-appindicator3-dev \
-                      librsvg2-dev \
-                      libxdo-dev \
-                      libxcb1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-                      patchelf
+    steps:
+      - uses: actions/checkout@v4
 
-            - name: Install npm deps
-              run: npm install
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
 
-            - name: Generate icons from SVG
-              run: npx @tauri-apps/cli icon ../backend/static/app-icon.svg -o src-tauri/icons
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
-            - name: Inject updater config (pubkey + endpoint) into tauri.conf.json
-              env:
-                  TAURI_SIGNING_PUBLIC_KEY: ${{ secrets.TAURI_SIGNING_PUBLIC_KEY }}
-                  REPO_FULL: ${{ github.repository }}
-              shell: bash
-              run: |
-                  node -e "
-                    const fs = require('fs');
-                    const p = 'src-tauri/tauri.conf.json';
-                    const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
-                    cfg.plugins = cfg.plugins || {};
-                    cfg.plugins.updater = cfg.plugins.updater || {};
-                    cfg.plugins.updater.endpoints = [
-                      'https://github.com/' + process.env.REPO_FULL + '/releases/latest/download/latest.json'
-                    ];
-                    if (process.env.TAURI_SIGNING_PUBLIC_KEY) {
-                      cfg.plugins.updater.pubkey = process.env.TAURI_SIGNING_PUBLIC_KEY;
-                    }
-                    fs.writeFileSync(p, JSON.stringify(cfg, null, 4));
-                    console.log('Injected updater config:', JSON.stringify(cfg.plugins.updater, null, 2));
-                  "
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
 
-            - name: Tauri build (signed)
-              env:
-                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-              run: npx @tauri-apps/cli build --target ${{ matrix.target }}
+      # ── Linux system deps ──────────────────────────────────────────
+      - name: Linux build deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libssl-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev \
+            libxcb1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            patchelf
 
-            - name: Collect bundles + signatures
-              shell: bash
-              run: |
-                  mkdir -p out
-                  TARGET=${{ matrix.target }}
-                  BUNDLE_DIR="src-tauri/target/${TARGET}/release/bundle"
-                  if [ -d "$BUNDLE_DIR" ]; then
-                    find "$BUNDLE_DIR" -type f \( \
-                        -name "*.dmg" -o -name "*.app.tar.gz" -o \
-                        -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o \
-                        -name "*.msi" -o -name "*.exe" -o -name "*.sig" \
-                    \) -exec cp -v {} out/ \;
-                  fi
-                  ls -la out
+      # ── macOS code signing + notarization ──────────────────────────
+      - name: Import Apple certificate
+        if: runner.os == 'macOS' && env.APPLE_CERTIFICATE != ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/cert.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p actions "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p actions "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k actions "$KEYCHAIN_PATH"
+          rm -f "$CERT_PATH"
 
-            - name: Upload artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: vongkimco-desktop-${{ matrix.artifact }}
-                  path: desktop/out/*
-                  if-no-files-found: warn
+      # ── Windows code signing ───────────────────────────────────────
+      - name: Import Windows certificate
+        if: runner.os == 'Windows' && env.WINDOWS_CERTIFICATE != ''
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        shell: pwsh
+        run: |
+          $certPath = "$env:RUNNER_TEMP\cert.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, [System.Convert]::FromBase64String("$env:WINDOWS_CERTIFICATE"))
+          Import-PfxCertificate -FilePath "$certPath" -CertStoreLocation Cert:\CurrentUser\My -Password (ConvertTo-SecureString -String "$env:WINDOWS_CERTIFICATE_PASSWORD" -AsPlainText -Force)
+          Remove-Item "$certPath"
 
-    release:
-        if: startsWith(github.ref, 'refs/tags/desktop-v')
-        needs: build
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
+      # ── Common ─────────────────────────────────────────────────────
+      - name: Install npm deps
+        run: npm install
 
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
+      - name: Generate icons from SVG
+        run: npx @tauri-apps/cli icon ../backend/static/app-icon.svg -o src-tauri/icons
 
-            - name: Download all artifacts
-              uses: actions/download-artifact@v4
-              with:
-                  path: artifacts
+      - name: Inject updater config (pubkey + endpoint) into tauri.conf.json
+        env:
+          TAURI_SIGNING_PUBLIC_KEY: ${{ secrets.TAURI_SIGNING_PUBLIC_KEY }}
+          REPO_FULL: ${{ github.repository }}
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const p = 'src-tauri/tauri.conf.json';
+            const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
+            cfg.plugins = cfg.plugins || {};
+            cfg.plugins.updater = cfg.plugins.updater || {};
+            cfg.plugins.updater.endpoints = [
+              'https://github.com/' + process.env.REPO_FULL + '/releases/latest/download/latest.json'
+            ];
+            if (process.env.TAURI_SIGNING_PUBLIC_KEY) {
+              cfg.plugins.updater.pubkey = process.env.TAURI_SIGNING_PUBLIC_KEY;
+            }
+            fs.writeFileSync(p, JSON.stringify(cfg, null, 4));
+            console.log('Injected updater config:', JSON.stringify(cfg.plugins.updater, null, 2));
+          "
 
-            - name: Flatten artifacts
-              run: |
-                  mkdir -p release
-                  find artifacts -type f -exec cp -v {} release/ \;
-                  ls -la release
+      - name: Tauri build (signed)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS notarization
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npx @tauri-apps/cli build --target ${{ matrix.target }}
 
-            - name: Build latest.json (Tauri updater manifest)
-              env:
-                  GITHUB_REPOSITORY: ${{ github.repository }}
-                  GITHUB_REF_NAME: ${{ github.ref_name }}
-              run: |
-                  VERSION="${GITHUB_REF_NAME#desktop-v}"
-                  PUB_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-                  node desktop/scripts/build-update-manifest.cjs \
-                      release \
-                      "$VERSION" \
-                      "$PUB_DATE" \
-                      > release/latest.json
-                  echo "--- latest.json ---"
-                  cat release/latest.json
+      - name: Collect bundles + signatures
+        shell: bash
+        run: |
+          mkdir -p out
+          TARGET=${{ matrix.target }}
+          BUNDLE_DIR="src-tauri/target/${TARGET}/release/bundle"
+          if [ -d "$BUNDLE_DIR" ]; then
+            find "$BUNDLE_DIR" -type f \( \
+                -name "*.dmg" -o -name "*.app.tar.gz" -o \
+                -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o \
+                -name "*.msi" -o -name "*.exe" -o -name "*.sig" \
+            \) -exec cp -v {} out/ \;
+          fi
+          ls -la out
 
-            - name: Create GitHub Release
-              uses: softprops/action-gh-release@v2
-              with:
-                  files: release/*
-                  generate_release_notes: true
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vongkimco-desktop-${{ matrix.artifact }}
+          path: desktop/out/*
+          retention-days: 7
+          if-no-files-found: warn
+
+  # ─── Release: assemble manifest & publish ──────────────────────────
+  release:
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec cp -v {} release/ \;
+          ls -la release
+
+      - name: Build latest.json (Tauri updater manifest)
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#desktop-v}"
+          PUB_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          node desktop/scripts/build-update-manifest.cjs \
+              release \
+              "$VERSION" \
+              "$PUB_DATE" \
+              > release/latest.json
+          echo "--- latest.json ---"
+          cat release/latest.json
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          # Try to find CHANGELOG entry for this version
+          VERSION="${GITHUB_REF_NAME#desktop-v}"
+          if [ -f CHANGELOG.md ]; then
+            # Extract section for this version
+            NOTES=$(sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | head -n -1 | tail -n +2)
+          fi
+          if [ -z "$NOTES" ]; then
+            NOTES="Release desktop v$VERSION"
+          fi
+          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          body: ${{ steps.notes.outputs.notes }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}

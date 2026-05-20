@@ -1,0 +1,77 @@
+name: Desktop — CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop-ci.yml"
+  pull_request:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop-ci.yml"
+
+concurrency:
+  group: desktop-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm install
+      - run: npm run check
+
+  lint-rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+
+  build-linux:
+    needs: [lint-frontend, lint-rust]
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - name: Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libssl-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev \
+            libxcb1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            patchelf
+      - run: npm install
+      - run: npx @tauri-apps/cli icon ../backend/static/app-icon.svg -o src-tauri/icons
+      - run: npx @tauri-apps/cli build
