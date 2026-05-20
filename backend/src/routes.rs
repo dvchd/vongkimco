@@ -10,7 +10,8 @@ use tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer};
 use tower_sessions_sqlx_store::SqliteStore;
 
 use crate::handlers::{
-    admin, auth_api, desktop_auth, desktop_release, device_api, feedback, health, home, membership, oauth, policy,
+    admin, auth_api, desktop_auth, desktop_release, device_api, feedback, health, home, membership,
+    oauth, policy,
 };
 use crate::state::AppState;
 

@@ -61,6 +61,10 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm install
       - run: npm run build
+      # Generate icons — Tauri's generate_context! macro embeds icon
+      # paths at compile time; without the PNGs, cargo check/clippy
+      # will fail with "failed to open icon … No such file or directory".
+      - run: npx @tauri-apps/cli icon ../backend/static/app-icon.svg -o src-tauri/icons
       # Now lint Rust
       - run: cargo fmt --check
         working-directory: desktop/src-tauri

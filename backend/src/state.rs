@@ -120,6 +120,10 @@ impl AppState {
             .timeout(std::time::Duration::from_secs(15))
             .build()
             .expect("Failed to create HTTP client");
-        Self { config, db, http_client }
+        Self {
+            config,
+            db,
+            http_client,
+        }
     }
 }
