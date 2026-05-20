@@ -189,12 +189,18 @@ jobs:
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # Unset empty env vars that would cause Tauri to misparse keys.
+          # GitHub Actions sets deleted/empty secrets as empty strings,
+          # which makes Tauri try to decrypt the signing key with an empty
+          # password and silently fail (no .sig files produced).
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" ]; then
+            unset TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+          fi
           # On macOS, if no Apple cert is configured, unset the signing
           # env vars so Tauri falls back to signingIdentity in tauri.conf.json.
           if [ "$(uname)" = "Darwin" ] && [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
