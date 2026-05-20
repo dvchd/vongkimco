@@ -71,8 +71,14 @@ jobs:
                   cache-to: type=gha,mode=max
 
             - name: Deploy to Coolify
-              if: ${{ secrets.COOLIFY_WEBHOOK != '' && secrets.COOLIFY_TOKEN != '' }}
+              env:
+                  COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+                  COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
               run: |
-                  curl --request GET \
-                    --header "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
-                    "${{ secrets.COOLIFY_WEBHOOK }}"
+                  if [ -n "$COOLIFY_WEBHOOK" ] && [ -n "$COOLIFY_TOKEN" ]; then
+                    curl --request GET \
+                      --header "Authorization: Bearer $COOLIFY_TOKEN" \
+                      "$COOLIFY_WEBHOOK"
+                  else
+                    echo "Coolify secrets not configured, skipping deploy"
+                  fi
