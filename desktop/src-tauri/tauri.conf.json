@@ -1,8 +1,8 @@
 {
     "$schema": "https://schema.tauri.app/config/2.0",
-    "productName": "Vòng Kim Cô",
+    "productName": "VongKimCo",
     "version": "0.3.0",
-    "identifier": "com.vongkimco.desktop",
+    "identifier": "com.hoctuthien.vongkimco",
     "build": {
         "frontendDist": "../dist",
         "devUrl": "http://localhost:1420",
@@ -39,10 +39,10 @@
             "icons/icon.ico"
         ],
         "category": "Productivity",
-        "copyright": "© 2026 Vòng Kim Cô Contributors",
+        "copyright": "© 2026 VongKimCo Contributors",
         "shortDescription": "Activity monitor for online work sessions",
-        "longDescription": "Vòng Kim Cô là ứng dụng giám sát phiên làm việc online: chụp màn hình định kỳ, theo dõi idle/active, danh sách ứng dụng đang chạy, đồng bộ với backend qua HTTPS.",
-        "publisher": "Vòng Kim Cô",
+        "longDescription": "VongKimCo là ứng dụng giám sát phiên làm việc online: chụp màn hình định kỳ, theo dõi idle/active, danh sách ứng dụng đang chạy, đồng bộ với backend qua HTTPS.",
+        "publisher": "VongKimCo",
         "linux": {
             "deb": {
                 "depends": []

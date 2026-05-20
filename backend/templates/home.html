@@ -277,12 +277,15 @@
             // Show hint
             if (hint) {
                 hint.style.display = 'block';
+                var allReleasesUrl = 'https://github.com/' + GITHUB_REPO + '/releases';
                 if (detected) {
                     var meta3 = platformMeta[detected];
                     hint.innerHTML = 'Đã phát hiện nền tảng <strong>' + meta3.label + '</strong> (' + meta3.hint + '). ' +
-                        'Hoặc <a href="' + RELEASES_BASE + '" target="_blank" rel="noopener">xem tất cả phiên bản</a>.';
+                        '<a href="' + RELEASES_BASE + '" target="_blank" rel="noopener">Xem tất cả file trong bản mới nhất</a> · ' +
+                        '<a href="' + allReleasesUrl + '" target="_blank" rel="noopener">Xem tất cả phiên bản</a>.';
                 } else {
-                    hint.innerHTML = '<a href="' + RELEASES_BASE + '" target="_blank" rel="noopener">Xem tất cả phiên bản</a> trên GitHub.';
+                    hint.innerHTML = '<a href="' + RELEASES_BASE + '" target="_blank" rel="noopener">Xem file trong bản mới nhất</a> · ' +
+                        '<a href="' + allReleasesUrl + '" target="_blank" rel="noopener">Xem tất cả phiên bản</a> trên GitHub.';
                 }
             }
         }

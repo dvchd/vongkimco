@@ -2,9 +2,9 @@
 name = "vongkimco-desktop"
 version = "0.3.0"
 edition = "2021"
-authors = ["Vòng Kim Cô Contributors"]
+authors = ["VongKimCo Contributors"]
 license = "MIT"
-description = "Vòng Kim Cô — desktop activity monitor (Tauri)"
+description = "VongKimCo — desktop activity monitor (Tauri)"
 
 [lib]
 name = "vongkimco_lib"
