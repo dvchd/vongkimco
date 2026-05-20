@@ -189,6 +189,7 @@ jobs:
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -211,8 +212,11 @@ jobs:
           if [ -d "$BUNDLE_DIR" ]; then
             find "$BUNDLE_DIR" -type f \( \
                 -name "*.dmg" -o -name "*.app.tar.gz" -o \
-                -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o \
-                -name "*.msi" -o -name "*.exe" -o -name "*.sig" \
+                -name "*.AppImage" -o -name "*.AppImage.tar.gz" -o \
+                -name "*.deb" -o -name "*.rpm" -o \
+                -name "*.msi" -o -name "*.exe" -o \
+                -name "*.nsis.zip" -o -name "*.msi.zip" -o \
+                -name "*.sig" \
             \) -exec cp -v {} out/ \;
           fi
           ls -la out
