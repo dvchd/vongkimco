@@ -87,7 +87,7 @@ jobs:
                     -X POST \
                     -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
                     -H "Content-Type: application/json" \
-                    "${{ secrets.COOLIFY_BASE_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}")
+                    "${{ secrets.COOLIFY_BASE_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}&force=false")
                   echo "Coolify API responded: HTTP $HTTP_CODE"
                   if [ "$HTTP_CODE" -ge 400 ]; then
                     echo "⚠️ Coolify deploy trigger failed (HTTP $HTTP_CODE)"
