@@ -1,14 +1,15 @@
-# Vòng Kim Cô — production stack
+# VongKimCo — production stack
 # Deploy to Coolify: select "Docker Compose" with this file as source.
-# Coolify will provision a Caddy/Traefik reverse proxy that terminates TLS
+# Coolify will provision a reverse proxy that terminates TLS
 # for https://vongkimco.hoctuthien.com and forwards to the backend on :8080.
+#
+# The backend image is built and pushed to ghcr.io by GitHub Actions
+# on every push to main. Coolify only needs to pull the image —
+# no local build required.
 
 services:
     backend:
-        build:
-            context: ./backend
-            dockerfile: Dockerfile
-        image: vongkimco-backend:latest
+        image: ghcr.io/dvchd/vongkimco-backend:latest
         container_name: vongkimco-backend
         restart: unless-stopped
         environment:
