@@ -24,6 +24,7 @@ pub struct HomeTemplate {
     pub viewer: Option<HomeViewer>,
     pub maintainer_facebook: String,
     pub maintainer_email: String,
+    pub version: String,
 }
 
 pub struct HomeViewer {
@@ -53,6 +54,7 @@ pub async fn home_page(State(state): State<Arc<AppState>>, session: Session) -> 
         viewer,
         maintainer_facebook: state.config.maintainer_facebook.clone(),
         maintainer_email: state.config.maintainer_email.clone(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
     }
     .into_response()
 }

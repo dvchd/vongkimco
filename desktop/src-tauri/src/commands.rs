@@ -84,6 +84,27 @@ pub async fn test_server(url: String) -> CmdResult<Value> {
     Ok(j)
 }
 
+/// Fetch server info for the currently configured server URL.
+/// Used by the Settings page to display the backend version.
+#[tauri::command]
+pub async fn get_server_info(state: State<'_, AppState>) -> CmdResult<Value> {
+    let server = state.server_url();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .build()
+        .map_err(err)?;
+    let resp = client
+        .get(format!("{}/api/v1/server-info", server.trim_end_matches('/')))
+        .send()
+        .await
+        .map_err(err)?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+    let j: Value = resp.json().await.map_err(err)?;
+    Ok(j)
+}
+
 // ---------- Auth commands ----------
 
 #[tauri::command]

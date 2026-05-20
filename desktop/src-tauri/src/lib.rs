@@ -51,6 +51,7 @@ pub fn run() {
             commands::refresh_policy,
             commands::set_server_url,
             commands::test_server,
+            commands::get_server_info,
             commands::auth_start,
             commands::auth_poll,
             commands::auth_cancel,

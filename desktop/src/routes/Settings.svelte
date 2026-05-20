@@ -17,6 +17,7 @@
     let saved = false;
     let error: string | null = null;
     let appVersion = "";
+    let serverVersion = "";
     let policyRefreshing = false;
 
     function pickTheme(t: ThemePref) {
@@ -27,6 +28,10 @@
 
     onMount(async () => {
         try { appVersion = await getVersion(); } catch {}
+        try {
+            const info: any = await invoke("get_server_info");
+            serverVersion = info?.version ?? "";
+        } catch {}
     });
 
     async function save() {
@@ -95,6 +100,14 @@
         </label>
         <div class="hint">Đổi server sẽ huỷ token thiết bị hiện tại.</div>
     </div>
+    {#if serverVersion}
+        <div class="row" style="gap: 12px; margin-top: 8px;">
+            <div class="field">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản server</div>
+                <div style="font-weight: 600;">v{serverVersion}</div>
+            </div>
+        </div>
+    {/if}
 </div>
 
 <div class="card">
@@ -181,9 +194,15 @@
     <h2 style="margin-top: 0;">🔄 Cập nhật ứng dụng</h2>
     <div class="row between" style="margin-bottom: 12px;">
         <div>
-            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản hiện tại</div>
+            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản desktop</div>
             <div style="font-weight: 600;">v{appVersion || "?"}</div>
         </div>
+        {#if serverVersion}
+        <div>
+            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản server</div>
+            <div style="font-weight: 600;">v{serverVersion}</div>
+        </div>
+        {/if}
         <button on:click={() => checkForUpdate()} disabled={$updateState.status === "checking"}>
             {$updateState.status === "checking" ? "Đang kiểm tra…" : "Kiểm tra cập nhật"}
         </button>

@@ -5,6 +5,7 @@ pub async fn health() -> Json<Value> {
     Json(json!({
         "status": "ok",
         "app": "vongkimco",
+        "version": env!("CARGO_PKG_VERSION"),
         "time": chrono::Utc::now().to_rfc3339(),
     }))
 }
