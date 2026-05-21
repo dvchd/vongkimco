@@ -5,6 +5,51 @@ Tất cả thay đổi đáng chú ý của ứng dụng desktop Vòng Kim Cô �
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/),
 tuân thủ [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-05-21
+
+### Thêm mới
+- Màn hình splash screen với logo vòng kim cô và hiệu ứng loading animation khi khởi động ứng dụng — thay thế hiện tượng nháy giao diện đăng nhập trước khi chuyển sang màn hình chính
+
+## [0.1.6] - 2026-05-21
+
+### Sửa lỗi
+- Sửa lỗi "invalid updater binary format" trên Linux cài đặt bằng `.deb` — Tauri Updater chỉ hỗ trợ tự cập nhật cho AppImage, nên khi cài `.deb` sẽ hiển thị nút "Tải .deb" để tải thủ công thay vì tự cập nhật
+- Thêm lệnh Tauri `is_appimage` — kiểm tra biến môi trường `APPIMAGE` để nhận diện định dạng cài đặt
+
+## [0.1.5] - 2026-05-21
+
+### Sửa lỗi
+- Sửa lỗi phiên đăng nhập không được giữ lại khi mở lại ứng dụng — race condition giữa `boot()` (async restore session từ keyring) và `loadUser()` trên frontend; fix bằng cách Rust emit sự kiện `vkc://booted` sau khi boot xong, frontend đợi sự kiện này trước khi điều hướng
+- Sửa lỗi kiểm tra cập nhật không hoạt động khi chưa đăng nhập — `UpdateBanner` giờ hiển thị trên cả màn hình đăng nhập và chọn server
+
+### Thay đổi
+- CI: `Swatinem/rust-cache@v2` dùng `continue-on-error: true` để tránh lỗi crash cache trên Windows làm thất bại toàn bộ pipeline
+
+## [0.1.4] - 2026-05-21
+
+### Thay đổi
+- Cải thiện khu vực Server trong thanh bên — tăng kích thước vùng chạm (touch target), tách riêng nút đổi server
+
+## [0.1.3] - 2026-05-21
+
+### Thêm mới
+- Hiển thị URL xác thực có thể sao chép trên trang đăng nhập — người dùng có thể mở thủ công trong trình duyệt nếu popup không hoạt động
+
+## [0.1.2] - 2026-05-21
+
+### Thêm mới
+- Thêm điều hướng "Trang chủ" cho tất cả các trang admin backend
+- Thêm `pull_policy: always` vào docker-compose
+
+### Sửa lỗi
+- Sửa lỗi đọc giá trị policy sau khi sleep trong các monitor loops
+- Sửa lỗi `cargo fmt` gây thất bại CI lint Rust
+- Thêm phiên bản backend vào footer của tất cả trang admin (base.html)
+
+### Thay đổi
+- Tối ưu UI/UX desktop — bỏ mục điều hướng server trùng lặp, cải thiện trang chủ
+- Refactor `home.html` kế thừa `base.html` — loại bỏ header/footer/theme trùng lặp
+
 ## [0.1.1] - 2026-05-21
 
 ### Thêm mới
