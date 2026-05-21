@@ -55,7 +55,7 @@
     {% block content %}{% endblock %}
 </main>
 <footer class="footer">
-    <small>Vòng Kim Cô · Open Source · MIT · <a href="https://github.com/dvchd/vongkimco" target="_blank" rel="noopener" style="color: inherit;">GitHub</a></small>
+    <small><span id="footer-brand">Vòng Kim Cô</span> · Open Source · MIT · <a href="https://github.com/dvchd/vongkimco" target="_blank" rel="noopener" style="color: inherit;">GitHub</a></small>
 </footer>
 <script>
     // Theme picker: wires up the topbar segmented control and keeps it in sync
@@ -136,6 +136,18 @@
             nodes[i].textContent = fmt.format(d);
             if (tz) nodes[i].setAttribute('title', tz);
         }
+    })();
+
+    // Inject backend version into footer
+    (function () {
+        var el = document.getElementById('footer-brand');
+        if (!el) return;
+        fetch('/api/v1/server-info')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.version) el.textContent = 'Vòng Kim Cô v' + data.version;
+            })
+            .catch(function () {});
     })();
 </script>
 </body>
