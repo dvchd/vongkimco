@@ -39,11 +39,7 @@ fn activity_loop(state: AppState) {
         // Read the sample interval up front — it determines the polling
         // cycle length.  idle_threshold is read AFTER the cycle so config
         // changes take effect on the very next classification.
-        let sample_interval = state
-            .policy
-            .read()
-            .activity_sample_interval_secs
-            .max(5);
+        let sample_interval = state.policy.read().activity_sample_interval_secs.max(5);
 
         // Polling tick: every 1s, sample input deltas. Aggregate sample every `sample_interval`s.
         for _ in 0..sample_interval {
@@ -71,11 +67,7 @@ fn activity_loop(state: AppState) {
 
         // Read idle_threshold right before classification so config changes
         // are not delayed by one full sample interval.
-        let idle_threshold = state
-            .policy
-            .read()
-            .idle_threshold_secs
-            .max(15) as f64;
+        let idle_threshold = state.policy.read().idle_threshold_secs.max(15) as f64;
 
         let idle_secs = last_activity_ts.elapsed().as_secs_f64();
         let state_str = if idle_secs >= idle_threshold {
@@ -153,11 +145,7 @@ async fn screenshot_loop(state: AppState) {
         // wait before the next screenshot.  Quality/max_width are read AFTER
         // the sleep so that an in-flight config change takes effect on the
         // very next capture rather than being delayed by one full interval.
-        let interval = state
-            .policy
-            .read()
-            .screenshot_interval_secs
-            .max(30);
+        let interval = state.policy.read().screenshot_interval_secs.max(30);
         sleep(Duration::from_secs(interval)).await;
 
         // Read the latest policy right before capturing so we never use a

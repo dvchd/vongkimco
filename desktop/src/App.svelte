@@ -60,6 +60,10 @@
             return url;
         }
     }
+
+    function changeServer() {
+        $route = "server";
+    }
 </script>
 
 {#if !booted}
@@ -100,7 +104,9 @@
                         <span class="dot"></span>
                         {$sessionState.online ? "Online" : "Offline"}
                     </span>
-                    <span class="server-host">{serverHost($settings?.server_url)}</span>
+                    <button class="server-change-btn" on:click={changeServer} title="Đổi server">
+                        {serverHost($settings?.server_url)}
+                    </button>
                 </div>
                 <div class="muted small" style="margin-top: 6px;">v{appVersion || "?"}</div>
             </div>
@@ -109,7 +115,7 @@
             <UpdateBanner />
             {#if $route === "home"}<Home />
             {:else if $route === "history"}<History />
-            {:else if $route === "settings"}<Settings on:change-server={() => go("server")} />
+            {:else if $route === "settings"}<Settings />
             {/if}
         </main>
     </div>

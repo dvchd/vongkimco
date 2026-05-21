@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { getVersion } from "@tauri-apps/api/app";
     import {
@@ -13,14 +12,11 @@
     import { updateState, checkForUpdate, downloadAndInstall } from "../lib/updater";
     import { onMount } from "svelte";
 
-    const dispatch = createEventDispatcher<{ "change-server": void }>();
-
     let local = { ...($settings ?? {} as any) };
     if (!local.theme) local.theme = "auto";
     let saved = false;
     let error: string | null = null;
     let appVersion = "";
-    let serverVersion = "";
     let policyRefreshing = false;
 
     function pickTheme(t: ThemePref) {
@@ -30,10 +26,6 @@
 
     onMount(async () => {
         try { appVersion = await getVersion(); } catch {}
-        try {
-            const info: any = await invoke("get_server_info");
-            serverVersion = info?.version ?? "";
-        } catch {}
     });
 
     async function save() {
@@ -63,11 +55,6 @@
         }
     }
 
-    function serverHost(url: string | undefined | null): string {
-        if (!url) return "—";
-        try { return new URL(url).host; } catch { return url; }
-    }
-
     function fmtBool(b: boolean) {
         return b ? "Bật" : "Tắt";
     }
@@ -77,26 +64,6 @@
 
 {#if saved}<div class="banner ok">✓ Đã lưu cài đặt</div>{/if}
 {#if error}<div class="banner error">{error}</div>{/if}
-
-<!-- Server section — single place to view/change server -->
-<div class="card">
-    <div class="row between" style="align-items: baseline;">
-        <h2 style="margin-top: 0;">🌐 Server</h2>
-        <button class="ghost small" on:click={() => dispatch("change-server")}>Đổi server</button>
-    </div>
-    <div class="row" style="gap: 12px; flex-wrap: wrap;">
-        <div class="field" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Địa chỉ server</div>
-            <div style="font-weight: 600; font-size: 14px;">{serverHost(local.server_url)}</div>
-        </div>
-        {#if serverVersion}
-        <div class="field" style="flex: 0; min-width: auto; margin-bottom: 0;">
-            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản server</div>
-            <div style="font-weight: 600;">v{serverVersion}</div>
-        </div>
-        {/if}
-    </div>
-</div>
 
 <!-- Data collection policy — read-only, server-controlled -->
 <div class="card">

@@ -128,41 +128,45 @@
     </div>
 </div>
 
-<h2>Hoạt động phiên</h2>
-<div class="kpis">
-    <div class="kpi {$sessionState.last_activity === 'active' && $sessionState.running ? 'ok' : 'info'}">
-        <div class="kpi-label">Trạng thái</div>
-        <div class="kpi-value">{#if !$sessionState.running}—{:else}{$sessionState.last_activity === "active" ? "Hoạt động" : "Idle"}{/if}</div>
+<!-- Combined activity + policy section -->
+<div class="card">
+    <h2 style="margin-top: 0;">📊 Hoạt động phiên</h2>
+    <div class="kpis">
+        <div class="kpi info">
+            <div class="kpi-label">Sự kiện bàn phím</div>
+            <div class="kpi-value">{$sessionState.keyboard_events}</div>
+        </div>
+        <div class="kpi info">
+            <div class="kpi-label">Sự kiện chuột</div>
+            <div class="kpi-value">{$sessionState.mouse_events}</div>
+        </div>
+        <div class="kpi ok">
+            <div class="kpi-label">Ảnh chụp</div>
+            <div class="kpi-value">{$sessionState.screenshots_taken}</div>
+        </div>
+        <div class="kpi {$sessionState.pending_sync > 0 ? 'warn' : ''}">
+            <div class="kpi-label">Chờ đồng bộ</div>
+            <div class="kpi-value">{$sessionState.pending_sync}</div>
+        </div>
     </div>
-    <div class="kpi info">
-        <div class="kpi-label">Sự kiện bàn phím</div>
-        <div class="kpi-value">{$sessionState.keyboard_events}</div>
-    </div>
-    <div class="kpi info">
-        <div class="kpi-label">Sự kiện chuột</div>
-        <div class="kpi-value">{$sessionState.mouse_events}</div>
-    </div>
-    <div class="kpi ok">
-        <div class="kpi-label">Ảnh chụp</div>
-        <div class="kpi-value">{$sessionState.screenshots_taken}</div>
-    </div>
-    <div class="kpi {$sessionState.pending_sync > 0 ? 'warn' : ''}">
-        <div class="kpi-label">Chờ đồng bộ</div>
-        <div class="kpi-value">{$sessionState.pending_sync}</div>
-    </div>
-</div>
 
-<div class="info-grid">
-    <div class="info-item">
-        <span class="info-label">📸 Chụp màn hình</span>
-        <span class="info-value">{screenshotLabel}</span>
-    </div>
-    <div class="info-item">
-        <span class="info-label">💤 Ngưỡng idle</span>
-        <span class="info-value">{idleLabel}</span>
-    </div>
-    <div class="info-item">
-        <span class="info-label">⌨ Phím tắt</span>
-        <span class="info-value"><kbd>{$settings?.hotkey_start ?? "—"}</kbd> bắt đầu · <kbd>{$settings?.hotkey_stop ?? "—"}</kbd> dừng</span>
+    <div class="divider"></div>
+
+    <div class="policy-summary">
+        <span class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Cấu hình thu thập</span>
+        <div class="policy-items">
+            <div class="policy-item">
+                <span class="policy-icon">📸</span>
+                <span class="policy-text"><strong>Chụp màn hình:</strong> {screenshotLabel}</span>
+            </div>
+            <div class="policy-item">
+                <span class="policy-icon">💤</span>
+                <span class="policy-text"><strong>Ngưỡng idle:</strong> {idleLabel}</span>
+            </div>
+            <div class="policy-item">
+                <span class="policy-icon">⌨</span>
+                <span class="policy-text"><strong>Phím tắt:</strong> <kbd>{$settings?.hotkey_start ?? "—"}</kbd> bắt đầu · <kbd>{$settings?.hotkey_stop ?? "—"}</kbd> dừng</span>
+            </div>
+        </div>
     </div>
 </div>

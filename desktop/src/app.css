@@ -219,12 +219,25 @@ label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-
     gap: 8px;
     margin-top: 4px;
 }
-.sidebar .footer .server-host {
+.sidebar .footer .server-change-btn {
     font-size: 11px;
     color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-family: inherit;
+    line-height: 1;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.sidebar .footer .server-change-btn:hover {
+    background: var(--surface-2);
+    color: var(--primary);
+    border-color: var(--border);
 }
 
 .main {
@@ -349,29 +362,43 @@ label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-
     align-items: center;
 }
 
-/* ---------- Info grid (Home page policy summary) ---------- */
-.info-grid {
+/* ---------- Divider ---------- */
+.divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+}
+
+/* ---------- Policy summary (Home page) ---------- */
+.policy-summary {
+    margin-top: 0;
+}
+.policy-items {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin-top: 18px;
+    margin-top: 10px;
 }
-.info-item {
+.policy-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: var(--surface);
+    gap: 6px;
+    background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 8px 14px;
     font-size: 13px;
 }
-.info-item .info-label {
-    color: var(--muted);
+.policy-item .policy-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.policy-item .policy-text {
+    color: var(--text);
     white-space: nowrap;
 }
-.info-item .info-value {
-    color: var(--text);
+.policy-item .policy-text strong {
+    color: var(--muted);
     font-weight: 500;
 }
 
