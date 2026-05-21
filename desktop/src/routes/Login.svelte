@@ -14,6 +14,7 @@
     let error: string | null = null;
     let pollTimer: any = null;
     let attempts = 0;
+    let copied = false;
 
     /// 2 seconds between polls, 120 attempts → 4 minutes total. The flow
     /// itself expires after 8 minutes server-side, but the user is unlikely
@@ -79,6 +80,24 @@
         if (authUrl) openUrl(authUrl);
     }
 
+    async function copyLink() {
+        if (!authUrl) return;
+        try {
+            await navigator.clipboard.writeText(authUrl);
+            copied = true;
+            setTimeout(() => (copied = false), 2000);
+        } catch {
+            selectUrl();
+        }
+    }
+
+    function selectUrl() {
+        const el = document.getElementById("auth-url-input");
+        if (el && el instanceof HTMLInputElement) {
+            el.select();
+        }
+    }
+
     async function cancel() {
         stopPolling();
         authUrl = null;
@@ -123,10 +142,28 @@
                         <span class="dot"></span> Đang chờ đăng nhập…
                     </span>
                 </div>
-                <p class="muted small" style="margin: 12px 0;">
-                    Nếu trình duyệt chưa mở hoặc đã đóng, hãy bấm <em>Mở lại trình duyệt</em>.
-                </p>
-                <div class="row" style="gap: 8px;">
+
+                <!-- Copyable auth URL for cases where browser doesn't open correctly -->
+                <div class="auth-url-box">
+                    <div class="muted small" style="margin-bottom: 6px;">
+                        Nếu trình duyệt không mở đúng link, hãy copy link bên dưới và mở thủ công:
+                    </div>
+                    <div class="auth-url-row">
+                        <input
+                            id="auth-url-input"
+                            type="text"
+                            readonly
+                            value={authUrl ?? ""}
+                            class="auth-url-input"
+                            on:click={selectUrl}
+                        />
+                        <button class="primary small" on:click={copyLink} style="flex-shrink: 0; white-space: nowrap;">
+                            {copied ? "✓ Đã copy" : "Copy link"}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row" style="gap: 8px; margin-top: 12px;">
                     <button on:click={reopen}>Mở lại trình duyệt</button>
                     <button class="ghost" on:click={cancel}>Huỷ</button>
                 </div>

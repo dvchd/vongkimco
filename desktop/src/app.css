@@ -402,6 +402,30 @@ label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-
     font-weight: 500;
 }
 
+/* ---------- Auth URL copy box (Login page) ---------- */
+.auth-url-box {
+    margin-top: 14px;
+    padding: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.auth-url-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.auth-url-input {
+    font-size: 12px !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+    line-height: 1.4 !important;
+    padding: 8px 10px !important;
+    color: var(--code-color) !important;
+    cursor: text;
+    flex: 1;
+    min-width: 0;
+}
+
 /* ---------- Banners ---------- */
 .banner {
     background: var(--surface-2);
