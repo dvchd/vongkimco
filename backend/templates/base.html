@@ -20,6 +20,7 @@
         })();
     </script>
     <link rel="stylesheet" href="/static/admin.css" />
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
 <header class="topbar">
@@ -149,6 +150,8 @@
             })
             .catch(function () {});
     })();
+
+    {% block extra_scripts %}{% endblock %}
 </script>
 </body>
 </html>
