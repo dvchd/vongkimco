@@ -1,11 +1,18 @@
 <script lang="ts">
     import { updateState, downloadAndInstall, dismissUpdate, checkForUpdate } from "./updater";
+    import { open } from "@tauri-apps/plugin-shell";
 </script>
 
 {#if $updateState.status === "available"}
     <div class="update-banner">
         <div class="update-info">
             <strong>🆕 Bản cập nhật mới: v{$updateState.version}</strong>
+            {#if $updateState.manualOnly}
+                <p class="muted small manual-note">
+                    Ứng dụng được cài bằng .deb nên không tự cập nhật được.
+                    Tải file .deb mới và cài đặt thủ công:
+                </p>
+            {/if}
             {#if $updateState.notes}
                 <details>
                     <summary>Ghi chú phát hành</summary>
@@ -14,7 +21,13 @@
             {/if}
         </div>
         <div class="update-actions">
-            <button class="primary" on:click={() => downloadAndInstall()}>Cài đặt và khởi động lại</button>
+            {#if $updateState.manualOnly}
+                <button class="primary" on:click={() => $updateState.downloadUrl && open($updateState.downloadUrl)}>
+                    Tải .deb v{$updateState.version}
+                </button>
+            {:else}
+                <button class="primary" on:click={() => downloadAndInstall()}>Cài đặt và khởi động lại</button>
+            {/if}
             <button on:click={() => dismissUpdate()}>Để sau</button>
         </div>
     </div>
@@ -63,6 +76,7 @@
     .update-banner.err { border-left-color: var(--danger); }
     .update-info { flex: 1; min-width: 240px; }
     .update-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .manual-note { margin-top: 6px; }
     details summary { cursor: pointer; color: var(--muted); margin-top: 4px; user-select: none; }
     details pre {
         max-height: 160px; overflow: auto;

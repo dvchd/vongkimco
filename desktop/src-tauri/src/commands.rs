@@ -259,6 +259,16 @@ pub async fn get_device_fingerprint() -> CmdResult<String> {
     Ok(auth::device_fingerprint())
 }
 
+/// Check whether the running binary is an AppImage. The APPIMAGE env var is
+/// set by the AppImage runtime and points to the .AppImage file on disk.
+/// When installed via .deb (or any non-AppImage method) this variable is absent,
+/// so the Tauri updater cannot self-update — it would try to download an
+/// AppImage and fail with "invalid updater binary format".
+#[tauri::command]
+pub fn is_appimage() -> bool {
+    std::env::var("APPIMAGE").is_ok()
+}
+
 #[derive(Serialize)]
 pub struct AuthStatus {
     pub user: Option<UserInfo>,

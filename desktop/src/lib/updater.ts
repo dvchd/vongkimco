@@ -1,6 +1,7 @@
 import { writable } from "svelte/store";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { invoke } from "@tauri-apps/api/core";
 
 export interface UpdateState {
     status: "idle" | "checking" | "available" | "downloading" | "ready" | "uptodate" | "error";
@@ -8,10 +9,40 @@ export interface UpdateState {
     notes?: string;
     progress?: number;
     error?: string;
+    /** When true, auto-update is not possible (e.g. .deb install on Linux)
+     *  and the user must download the update manually. */
+    manualOnly?: boolean;
+    /** Direct download URL for the manual update (e.g. .deb file on GitHub). */
+    downloadUrl?: string;
 }
 
 export const updateState = writable<UpdateState>({ status: "idle" });
 let current: Update | null = null;
+
+// Whether this binary is an AppImage (only true when APPIMAGE env is set).
+// null = not yet checked, true/false = result.
+export const isAppImage = writable<boolean | null>(null);
+
+// ── Detect installation format ─────────────────────────────────────
+let _cachedIsAppImage: boolean | null = null;
+async function checkIsAppImage(): Promise<boolean> {
+    if (_cachedIsAppImage !== null) return _cachedIsAppImage;
+    try {
+        const result = await invoke<boolean>("is_appimage");
+        _cachedIsAppImage = result;
+        isAppImage.set(result);
+        return result;
+    } catch {
+        _cachedIsAppImage = false;
+        isAppImage.set(false);
+        return false;
+    }
+}
+
+// ── Build a manual download URL for .deb ─────────────────────────
+function buildDebDownloadUrl(version: string): string {
+    return `https://github.com/dvchd/vongkimco/releases/download/desktop-v${version}/VongKimCo_${version}_amd64.deb`;
+}
 
 // ── Periodic check ──────────────────────────────────────────────────
 let periodicTimer: ReturnType<typeof setInterval> | null = null;
@@ -50,14 +81,31 @@ export async function checkForUpdate(options: {
         const update = await check();
         if (update?.available) {
             current = update;
-            updateState.set({
-                status: "available",
-                version: update.version,
-                notes: update.body ?? undefined
-            });
-            // Auto-download if enabled
-            if (autoDownload) {
-                await downloadAndInstall();
+
+            // On Linux, if not an AppImage, auto-update will fail with
+            // "invalid updater binary format". Show manual download instead.
+            const appImage = await checkIsAppImage();
+            const isLinux = navigator.userAgent.includes("Linux") ||
+                (window as any).__TAURI_PLATFORM__ === "linux";
+
+            if (isLinux && !appImage) {
+                updateState.set({
+                    status: "available",
+                    version: update.version,
+                    notes: update.body ?? undefined,
+                    manualOnly: true,
+                    downloadUrl: buildDebDownloadUrl(update.version),
+                });
+            } else {
+                updateState.set({
+                    status: "available",
+                    version: update.version,
+                    notes: update.body ?? undefined,
+                });
+                // Auto-download if enabled
+                if (autoDownload) {
+                    await downloadAndInstall();
+                }
             }
             return true;
         } else {

@@ -58,6 +58,7 @@ pub fn run() {
             commands::get_current_user,
             commands::get_auth_status,
             commands::get_device_fingerprint,
+            commands::is_appimage,
             commands::logout,
             commands::start_session,
             commands::stop_session,
