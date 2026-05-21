@@ -52,6 +52,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri
+        continue-on-error: true
       # Build frontend first — Tauri's generate_context! macro checks
       # that frontendDist exists at compile time.
       - uses: actions/setup-node@v4
@@ -92,6 +93,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri
+        continue-on-error: true
       - name: Linux build deps
         run: |
           sudo apt-get update

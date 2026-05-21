@@ -99,6 +99,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri
+        continue-on-error: true
 
       # ── Linux system deps ──────────────────────────────────────────
       - name: Linux build deps
