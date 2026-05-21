@@ -36,13 +36,14 @@ fn activity_loop(state: AppState) {
     let mut counters_mo = 0i64;
 
     loop {
-        let (sample_interval, idle_threshold) = {
-            let p = state.policy.read();
-            (
-                p.activity_sample_interval_secs.max(5),
-                p.idle_threshold_secs.max(15) as f64,
-            )
-        };
+        // Read the sample interval up front — it determines the polling
+        // cycle length.  idle_threshold is read AFTER the cycle so config
+        // changes take effect on the very next classification.
+        let sample_interval = state
+            .policy
+            .read()
+            .activity_sample_interval_secs
+            .max(5);
 
         // Polling tick: every 1s, sample input deltas. Aggregate sample every `sample_interval`s.
         for _ in 0..sample_interval {
@@ -67,6 +68,14 @@ fn activity_loop(state: AppState) {
             last_mouse = mouse;
             std::thread::sleep(Duration::from_secs(1));
         }
+
+        // Read idle_threshold right before classification so config changes
+        // are not delayed by one full sample interval.
+        let idle_threshold = state
+            .policy
+            .read()
+            .idle_threshold_secs
+            .max(15) as f64;
 
         let idle_secs = last_activity_ts.elapsed().as_secs_f64();
         let state_str = if idle_secs >= idle_threshold {
@@ -140,16 +149,27 @@ async fn app_snapshot_loop(state: AppState) {
 
 async fn screenshot_loop(state: AppState) {
     loop {
-        let (enabled, interval, quality, max_width) = {
+        // Only read the sleep interval up front — it determines how long we
+        // wait before the next screenshot.  Quality/max_width are read AFTER
+        // the sleep so that an in-flight config change takes effect on the
+        // very next capture rather than being delayed by one full interval.
+        let interval = state
+            .policy
+            .read()
+            .screenshot_interval_secs
+            .max(30);
+        sleep(Duration::from_secs(interval)).await;
+
+        // Read the latest policy right before capturing so we never use a
+        // stale quality/max_width that was snapshot before the sleep.
+        let (enabled, quality, max_width) = {
             let p = state.policy.read();
             (
                 p.capture_screenshots,
-                p.screenshot_interval_secs.max(30),
                 p.screenshot_quality.clamp(20, 95) as u8,
                 p.screenshot_max_width.max(320),
             )
         };
-        sleep(Duration::from_secs(interval)).await;
 
         let session_id = state.session.read().session_id.clone();
         let Some(sid) = session_id else { continue };
