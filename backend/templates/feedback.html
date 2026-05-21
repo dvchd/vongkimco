@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Phản hồi · Vòng Kim Cô{% endblock %}
 {% block nav %}
+    <a href="/">Trang chủ</a>
     <a href="/feedback">Phản hồi của tôi</a>
     {% if !is_member %}<a href="/pending">Xin làm thành viên</a>{% endif %}
     {% if is_admin %}<a href="/admin">Trang quản trị</a>{% endif %}

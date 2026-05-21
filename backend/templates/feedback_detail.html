@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ post.title }} · Phản hồi{% endblock %}
 {% block nav %}
+    <a href="/">Trang chủ</a>
     {% if is_admin %}
         <a href="/admin/feedback">⟵ Tất cả phản hồi</a>
         <a href="/admin">Trang quản trị</a>

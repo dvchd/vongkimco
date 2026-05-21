@@ -19,6 +19,7 @@
 
 use std::sync::Arc;
 
+use askama::Template;
 use axum::extract::{Json, Path, Query, State};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use serde::{Deserialize, Serialize};
@@ -255,8 +256,12 @@ pub async fn poll(
 
 // ---------- 5. /auth/desktop/done ----------
 
-pub async fn done() -> Html<&'static str> {
-    Html(include_str!("../../templates/desktop_done.html"))
+#[derive(Template)]
+#[template(path = "desktop_done.html")]
+pub struct DesktopDoneTemplate;
+
+pub async fn done() -> Html<String> {
+    Html(DesktopDoneTemplate.render().unwrap())
 }
 
 // ---------- Core: complete_desktop_flow_if_match ----------

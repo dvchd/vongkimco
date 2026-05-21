@@ -1,32 +1,38 @@
-<!doctype html>
-<html lang="vi">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="/static/app-icon.svg" />
-    <title>Đăng nhập · Vòng Kim Cô</title>
-    <script>
-        (function () {
-            try {
-                var pref = localStorage.getItem("vkc_theme") || "auto";
-                var resolved = pref === "auto"
-                    ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
-                    : pref;
-                document.documentElement.setAttribute("data-theme", resolved);
-                document.documentElement.setAttribute("data-theme-pref", pref);
-            } catch (e) {}
-        })();
-    </script>
-    <link rel="stylesheet" href="/static/admin.css" />
-</head>
-<body class="centered">
-<div class="login-card">
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 8px;">
-        <img src="/static/app-icon.svg" alt="Vòng Kim Cô" width="72" height="72"
-             style="border-radius: 16px; box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35), 0 0 24px rgba(212, 160, 23, 0.25);" />
+{% extends "base.html" %}
+{% block title %}Đăng nhập · Vòng Kim Cô{% endblock %}
+{% block nav %}
+    <a href="/">Trang chủ</a>
+{% endblock %}
+{% block user %}
+    <div class="theme-toggle" role="group" aria-label="Giao diện">
+        <button type="button" data-theme-set="auto" title="Tự động theo hệ thống" aria-label="Tự động">🖥</button>
+        <button type="button" data-theme-set="light" title="Sáng" aria-label="Sáng">☀</button>
+        <button type="button" data-theme-set="dark" title="Tối" aria-label="Tối">🌙</button>
+    </div>
+{% endblock %}
+{% block extra_head %}
+<style>
+    .login-hero {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 10px; padding: 56px 24px 16px;
+    }
+    .login-hero img {
+        border-radius: 16px;
+        box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35), 0 0 24px rgba(212, 160, 23, 0.25);
+    }
+    .login-box {
+        max-width: 440px; margin: 0 auto;
+    }
+    .login-box .btn-primary { width: 100%; justify-content: center; padding: 12px 18px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="login-box">
+    <div class="login-hero">
+        <img src="/static/app-icon.svg" alt="Vòng Kim Cô" width="72" height="72" />
         <h1 style="margin: 0;">Vòng Kim Cô</h1>
     </div>
-    <p class="muted">Hệ thống giám sát phiên làm việc trực tuyến.</p>
+    <p class="muted" style="text-align: center;">Hệ thống giám sát phiên làm việc trực tuyến.</p>
     {% match reason %}
     {% when Some with (r) %}
         {% if r == "device" %}
@@ -34,7 +40,7 @@
         {% endif %}
     {% when None %}
     {% endmatch %}
-    <a href="/admin/oauth/start" class="btn-primary" style="width: 100%; justify-content: center; padding: 12px 18px; margin-top: 12px;">Đăng nhập bằng Google</a>
+    <a href="/admin/oauth/start" class="btn-primary" style="margin-top: 12px;">Đăng nhập bằng Google</a>
     <div class="muted small" style="margin-top: 18px; text-align: left; line-height: 1.7;">
         Mọi tài khoản Google đều có thể đăng nhập. Quyền truy cập tuỳ vai trò:
         <ul style="margin: 6px 0 0; padding-left: 22px;">
@@ -44,5 +50,4 @@
         </ul>
     </div>
 </div>
-</body>
-</html>
+{% endblock %}
