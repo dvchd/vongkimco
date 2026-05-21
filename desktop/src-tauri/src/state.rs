@@ -137,6 +137,11 @@ pub async fn boot(state: &AppState) -> Result<()> {
     crate::policy::start_refresh_loop(state.clone()).await;
     crate::monitor::register_hotkeys(state.clone()).await;
 
+    // Signal the frontend that boot (including session restore) is complete.
+    // Without this, the UI reads user=null before try_restore_session finishes
+    // and routes to the login screen on every launch.
+    let _ = state.app.emit("vkc://booted", ());
+
     Ok(())
 }
 

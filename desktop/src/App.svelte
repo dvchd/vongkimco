@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { getVersion } from "@tauri-apps/api/app";
+    import { listen } from "@tauri-apps/api/event";
     import {
         loadSettings,
         loadPolicy,
@@ -42,6 +43,16 @@
         }
         booted = true;
 
+        // Listen for boot completion from Rust — session may have been restored
+        // from keyring after the initial loadUser() call. If user is now present,
+        // switch away from the login screen.
+        const unlisten = await listen("vkc://booted", async () => {
+            await loadUser();
+            if ($user && $route === "login") {
+                $route = "home";
+            }
+        });
+
         checkForUpdate({ silent: true }).catch(() => {});
         startPeriodicCheck({ intervalMs: 4 * 60 * 60 * 1000, autoDownload: false });
 
@@ -77,8 +88,10 @@
     </div>
 {:else if $route === "server"}
     <ServerSelect on:done={() => go($user ? "home" : "login")} />
+    <UpdateBanner />
 {:else if $route === "login"}
     <Login on:done={() => go("home")} on:change-server={() => go("server")} />
+    <UpdateBanner />
 {:else}
     <div class="layout">
         <aside class="sidebar">
