@@ -32,6 +32,7 @@
 services:
     backend:
         image: ghcr.io/dvchd/vongkimco-backend:latest
+        pull_policy: always
         container_name: vongkimco-backend
         restart: unless-stopped
         environment:
