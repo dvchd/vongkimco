@@ -99,13 +99,16 @@
                 {#if $user}
                     <div class="user-email">{$user.email}</div>
                 {/if}
-                <div class="server-info">
-                    <span class="status-pill {$sessionState.online ? 'online' : 'offline'}" style="padding: 2px 8px; font-size: 10px;">
-                        <span class="dot"></span>
-                        {$sessionState.online ? "Online" : "Offline"}
-                    </span>
-                    <button class="server-change-btn" on:click={changeServer} title="Đổi server">
-                        {serverHost($settings?.server_url)}
+                <div class="server-section">
+                    <div class="server-row">
+                        <span class="status-pill {$sessionState.online ? 'online' : 'offline'}">
+                            <span class="dot"></span>
+                            {$sessionState.online ? "Online" : "Offline"}
+                        </span>
+                        <span class="server-host-label">{serverHost($settings?.server_url)}</span>
+                    </div>
+                    <button class="server-change-btn" on:click={changeServer}>
+                        🔄 Đổi server
                     </button>
                 </div>
                 <div class="muted small" style="margin-top: 6px;">v{appVersion || "?"}</div>
