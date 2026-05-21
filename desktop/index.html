@@ -20,8 +20,83 @@
             } catch (e) {}
         })();
     </script>
+    <style>
+        /* Splash screen — visible instantly before Svelte mounts.
+           Removed by App.svelte once booted = true. */
+        #splash {
+            position: fixed; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: #0f1115; z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+        :root[data-theme="light"] #splash { background: #f5f6fa; }
+        #splash.fade-out { opacity: 0; pointer-events: none; }
+        .splash-logo { width: 80px; height: 80px; }
+        .splash-headband {
+            transform-origin: center;
+            animation: tighten 2s ease-in-out infinite;
+        }
+        @keyframes tighten {
+            0%   { transform: scale(1);    opacity: 0.7; }
+            50%  { transform: scale(0.88); opacity: 1;   }
+            100% { transform: scale(1);    opacity: 0.7; }
+        }
+        .splash-focus-dot {
+            animation: glow-pulse 2s ease-in-out infinite;
+        }
+        @keyframes glow-pulse {
+            0%, 100% { opacity: 0.6; }
+            50%      { opacity: 1;   }
+        }
+        .splash-text {
+            margin-top: 16px; font-size: 14px;
+            color: #8b93a7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        :root[data-theme="light"] .splash-text { color: #5a6478; }
+    </style>
 </head>
 <body>
+    <!-- Splash shown instantly; removed by Svelte after boot -->
+    <div id="splash">
+        <svg class="splash-logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="sp-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#fbbf24" />
+                    <stop offset="50%" stop-color="#f59e0b" />
+                    <stop offset="100%" stop-color="#b45309" />
+                </linearGradient>
+                <linearGradient id="sp-highlight" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#fef08a" stop-opacity="0.8" />
+                    <stop offset="50%" stop-color="#fcd34d" stop-opacity="0.2" />
+                    <stop offset="100%" stop-color="#fef08a" stop-opacity="0.8" />
+                </linearGradient>
+                <filter id="sp-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+            </defs>
+            <!-- Background -->
+            <rect x="16" y="16" width="480" height="480" rx="112" fill="#0f1115" />
+            <!-- Focus rings -->
+            <circle cx="256" cy="256" r="120" fill="none" stroke="#f59e0b" stroke-width="2" stroke-opacity="0.2" stroke-dasharray="8 12" />
+            <circle cx="256" cy="256" r="80" fill="none" stroke="#f59e0b" stroke-width="2" stroke-opacity="0.5" stroke-dasharray="4 8" />
+            <circle cx="256" cy="256" r="40" fill="none" stroke="#fcd34d" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="2 4" />
+            <!-- Center dot -->
+            <circle class="splash-focus-dot" cx="256" cy="256" r="12" fill="#22d3ee" filter="url(#sp-glow)" />
+            <circle cx="256" cy="256" r="4" fill="#ffffff" />
+            <!-- Golden Headband (Vòng Kim Cô) — animated -->
+            <g class="splash-headband" transform="translate(0, -24)">
+                <path d="M 256 150 C 290 100, 380 120, 340 180 C 360 220, 400 310, 256 390 C 112 310, 152 220, 172 180 C 132 120, 222 100, 256 150 Z"
+                    fill="none" stroke="url(#sp-gold)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M 256 150 C 290 100, 380 120, 340 180 C 360 220, 400 310, 256 390 C 112 310, 152 220, 172 180 C 132 120, 222 100, 256 150 Z"
+                    fill="none" stroke="url(#sp-highlight)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+            </g>
+        </svg>
+        <p class="splash-text">Đang khởi tạo Vòng Kim Cô…</p>
+    </div>
+
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
 </body>
