@@ -27,9 +27,6 @@
 
     onMount(async () => {
         await loadSettings();
-        // Reconcile palette with the authoritative Rust-side setting (the
-        // inline boot script in index.html paints from localStorage, which may
-        // be stale if the user edited settings.json by hand).
         applyTheme($settings?.theme || "auto");
         installThemeAutoListener();
         await loadPolicy();
@@ -45,15 +42,9 @@
         }
         booted = true;
 
-        // Silent update check on startup. Errors stay silent here; the
-        // Settings page has an explicit "Check for update" button.
         checkForUpdate({ silent: true }).catch(() => {});
-
-        // Start periodic background check every 4 hours (auto-download disabled,
-        // user must click "Install & restart")
         startPeriodicCheck({ intervalMs: 4 * 60 * 60 * 1000, autoDownload: false });
 
-        // Fetch app version from Tauri
         try { appVersion = await getVersion(); } catch {}
     });
 
@@ -100,28 +91,25 @@
             <button type="button" class="nav-link" class:active={$route === "settings"} on:click={() => go("settings")}>
                 <span class="icon">⚙</span><span>Cài đặt</span>
             </button>
-            <button type="button" class="nav-link" class:active={$route === "server"} on:click={() => go("server")}>
-                <span class="icon">🌐</span><span>Server</span>
-            </button>
             <div class="footer">
                 {#if $user}
                     <div class="user-email">{$user.email}</div>
                 {/if}
-                <div class="muted small">{serverHost($settings?.server_url)}</div>
-                <div class="muted small" style="margin-top: 6px;">
+                <div class="server-info">
                     <span class="status-pill {$sessionState.online ? 'online' : 'offline'}" style="padding: 2px 8px; font-size: 10px;">
                         <span class="dot"></span>
                         {$sessionState.online ? "Online" : "Offline"}
                     </span>
+                    <span class="server-host">{serverHost($settings?.server_url)}</span>
                 </div>
-                <div class="muted small" style="margin-top: 8px;">v{appVersion || "?"} · OSS</div>
+                <div class="muted small" style="margin-top: 6px;">v{appVersion || "?"}</div>
             </div>
         </aside>
         <main class="main">
             <UpdateBanner />
             {#if $route === "home"}<Home />
             {:else if $route === "history"}<History />
-            {:else if $route === "settings"}<Settings />
+            {:else if $route === "settings"}<Settings on:change-server={() => go("server")} />
             {/if}
         </main>
     </div>

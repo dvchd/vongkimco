@@ -1,6 +1,6 @@
 <script lang="ts">
     import { invoke } from "@tauri-apps/api/core";
-    import { refreshStatus, sessionState, user, settings } from "../lib/stores";
+    import { refreshStatus, sessionState, user, settings, policy } from "../lib/stores";
     import { onMount, onDestroy } from "svelte";
 
     let busy = false;
@@ -75,6 +75,12 @@
         : $sessionState.last_activity === "active"
             ? "active"
             : "idle";
+
+    $: screenshotLabel = !$policy?.capture_screenshots
+        ? "Tắt"
+        : `Mỗi ${$policy?.screenshot_interval_secs ?? 180}s`;
+
+    $: idleLabel = `Sau ${$policy?.idle_threshold_secs ?? 120}s`;
 </script>
 
 <h1>Phiên làm việc</h1>
@@ -87,7 +93,7 @@
 <div class="card">
     <div class="row between" style="align-items: flex-start;">
         <div>
-            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Trạng thái phiên</div>
+            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Trạng thái</div>
             <div class="row" style="margin-top: 8px;">
                 <span class="status-pill {statusClass}">
                     <span class="dot"></span>
@@ -122,14 +128,18 @@
     </div>
 </div>
 
-<h2>Thống kê phiên</h2>
+<h2>Hoạt động phiên</h2>
 <div class="kpis">
+    <div class="kpi {$sessionState.last_activity === 'active' && $sessionState.running ? 'ok' : 'info'}">
+        <div class="kpi-label">Trạng thái</div>
+        <div class="kpi-value">{#if !$sessionState.running}—{:else}{$sessionState.last_activity === "active" ? "Hoạt động" : "Idle"}{/if}</div>
+    </div>
     <div class="kpi info">
-        <div class="kpi-label">Bàn phím</div>
+        <div class="kpi-label">Sự kiện bàn phím</div>
         <div class="kpi-value">{$sessionState.keyboard_events}</div>
     </div>
     <div class="kpi info">
-        <div class="kpi-label">Chuột</div>
+        <div class="kpi-label">Sự kiện chuột</div>
         <div class="kpi-value">{$sessionState.mouse_events}</div>
     </div>
     <div class="kpi ok">
@@ -142,6 +152,17 @@
     </div>
 </div>
 
-<p class="muted small" style="margin-top: 18px;">
-    Phím tắt: <kbd>{$settings?.hotkey_start ?? "—"}</kbd> bắt đầu · <kbd>{$settings?.hotkey_stop ?? "—"}</kbd> dừng
-</p>
+<div class="info-grid">
+    <div class="info-item">
+        <span class="info-label">📸 Chụp màn hình</span>
+        <span class="info-value">{screenshotLabel}</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">💤 Ngưỡng idle</span>
+        <span class="info-value">{idleLabel}</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">⌨ Phím tắt</span>
+        <span class="info-value"><kbd>{$settings?.hotkey_start ?? "—"}</kbd> bắt đầu · <kbd>{$settings?.hotkey_stop ?? "—"}</kbd> dừng</span>
+    </div>
+</div>

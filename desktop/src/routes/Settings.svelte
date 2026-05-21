@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { createEventDispatcher } from "svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { getVersion } from "@tauri-apps/api/app";
     import {
@@ -12,6 +13,8 @@
     import { updateState, checkForUpdate, downloadAndInstall } from "../lib/updater";
     import { onMount } from "svelte";
 
+    const dispatch = createEventDispatcher<{ "change-server": void }>();
+
     let local = { ...($settings ?? {} as any) };
     if (!local.theme) local.theme = "auto";
     let saved = false;
@@ -22,7 +25,6 @@
 
     function pickTheme(t: ThemePref) {
         local.theme = t;
-        // Apply immediately for live preview; saveSettings() persists.
         applyTheme(t);
     }
 
@@ -61,22 +63,97 @@
         }
     }
 
+    function serverHost(url: string | undefined | null): string {
+        if (!url) return "—";
+        try { return new URL(url).host; } catch { return url; }
+    }
+
     function fmtBool(b: boolean) {
         return b ? "Bật" : "Tắt";
     }
 </script>
 
 <h1>Cài đặt</h1>
-<p>Tuỳ chọn riêng máy nằm bên dưới. Các chính sách thu thập do admin quản lý ở phía server.</p>
 
 {#if saved}<div class="banner ok">✓ Đã lưu cài đặt</div>{/if}
 {#if error}<div class="banner error">{error}</div>{/if}
 
+<!-- Server section — single place to view/change server -->
+<div class="card">
+    <div class="row between" style="align-items: baseline;">
+        <h2 style="margin-top: 0;">🌐 Server</h2>
+        <button class="ghost small" on:click={() => dispatch("change-server")}>Đổi server</button>
+    </div>
+    <div class="row" style="gap: 12px; flex-wrap: wrap;">
+        <div class="field" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Địa chỉ server</div>
+            <div style="font-weight: 600; font-size: 14px;">{serverHost(local.server_url)}</div>
+        </div>
+        {#if serverVersion}
+        <div class="field" style="flex: 0; min-width: auto; margin-bottom: 0;">
+            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản server</div>
+            <div style="font-weight: 600;">v{serverVersion}</div>
+        </div>
+        {/if}
+    </div>
+</div>
+
+<!-- Data collection policy — read-only, server-controlled -->
+<div class="card">
+    <div class="row between" style="align-items: baseline;">
+        <h2 style="margin-top: 0;">📊 Thu thập dữ liệu</h2>
+        <span class="muted small">🔒 Do admin quản lý</span>
+    </div>
+    {#if $policy}
+        <div class="row" style="gap: 12px; flex-wrap: wrap;">
+            <div class="field" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chụp màn hình</div>
+                <div style="font-weight: 600;">{fmtBool($policy.capture_screenshots)}</div>
+            </div>
+            <div class="field" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ chụp</div>
+                <div style="font-weight: 600;">{$policy.screenshot_interval_secs}s</div>
+            </div>
+            <div class="field" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ activity</div>
+                <div style="font-weight: 600;">{$policy.activity_sample_interval_secs}s</div>
+            </div>
+        </div>
+        <div class="row" style="gap: 12px; flex-wrap: wrap; margin-top: 12px;">
+            <div class="field" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Snapshot ứng dụng</div>
+                <div style="font-weight: 600;">{$policy.app_snapshot_interval_secs}s</div>
+            </div>
+            <div class="field" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Ngưỡng idle</div>
+                <div style="font-weight: 600;">{$policy.idle_threshold_secs}s</div>
+            </div>
+            <div class="field" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chất lượng ảnh</div>
+                <div style="font-weight: 600;">{$policy.screenshot_quality}% · {$policy.screenshot_max_width}px</div>
+            </div>
+        </div>
+        <div class="row between" style="margin-top: 14px;">
+            <p class="muted small" style="margin: 0;">
+                {#if $policy.from_server}
+                    Cập nhật: <strong>{$policy.version || "—"}</strong>
+                {:else}
+                    Đang dùng giá trị mặc định.
+                {/if}
+            </p>
+            <button on:click={pullPolicy} disabled={policyRefreshing}>
+                {policyRefreshing ? "Đang lấy…" : "↻ Lấy cấu hình mới"}
+            </button>
+        </div>
+    {/if}
+</div>
+
+<!-- Theme -->
 <div class="card">
     <h2 style="margin-top: 0;">🎨 Giao diện</h2>
     <div class="theme-picker" role="group" aria-label="Chế độ giao diện">
         <button type="button" class:active={local.theme === "auto"} on:click={() => pickTheme("auto")}>
-            🖥 Theo hệ thống
+            🖥 Hệ thống
         </button>
         <button type="button" class:active={local.theme === "light"} on:click={() => pickTheme("light")}>
             ☀ Sáng
@@ -85,80 +162,9 @@
             🌙 Tối
         </button>
     </div>
-    <p class="muted small" style="margin: 10px 0 0;">
-        "Theo hệ thống" sẽ tự đổi sáng / tối theo thiết lập của Windows · macOS · Linux.
-        Bấm <strong>Lưu cài đặt</strong> để ghi nhớ cho lần mở tiếp theo.
-    </p>
 </div>
 
-<div class="card">
-    <h2 style="margin-top: 0;">🌐 Server</h2>
-    <div class="field">
-        <label>
-            URL server backend
-            <input type="url" bind:value={local.server_url} />
-        </label>
-        <div class="hint">Đổi server sẽ huỷ token thiết bị hiện tại.</div>
-    </div>
-    {#if serverVersion}
-        <div class="row" style="gap: 12px; margin-top: 8px;">
-            <div class="field">
-                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản server</div>
-                <div style="font-weight: 600;">v{serverVersion}</div>
-            </div>
-        </div>
-    {/if}
-</div>
-
-<div class="card">
-    <div class="row between" style="align-items: baseline;">
-        <h2 style="margin-top: 0;">📊 Thu thập dữ liệu</h2>
-        <span class="muted small">🔒 Quản lý bởi admin</span>
-    </div>
-    {#if $policy}
-        <div class="row" style="gap: 12px; flex-wrap: wrap;">
-            <div class="field" style="flex: 1; min-width: 200px;">
-                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chụp màn hình</div>
-                <div style="font-weight: 600;">{fmtBool($policy.capture_screenshots)}</div>
-            </div>
-            <div class="field" style="flex: 1; min-width: 200px;">
-                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ chụp (s)</div>
-                <div style="font-weight: 600;">{$policy.screenshot_interval_secs}</div>
-            </div>
-            <div class="field" style="flex: 1; min-width: 200px;">
-                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ activity (s)</div>
-                <div style="font-weight: 600;">{$policy.activity_sample_interval_secs}</div>
-            </div>
-        </div>
-        <div class="row" style="gap: 12px; flex-wrap: wrap;">
-            <div class="field" style="flex: 1; min-width: 200px;">
-                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ snapshot ứng dụng (s)</div>
-                <div style="font-weight: 600;">{$policy.app_snapshot_interval_secs}</div>
-            </div>
-            <div class="field" style="flex: 1; min-width: 200px;">
-                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Ngưỡng idle (s)</div>
-                <div style="font-weight: 600;">{$policy.idle_threshold_secs}</div>
-            </div>
-            <div class="field" style="flex: 1; min-width: 200px;">
-                <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Chu kỳ làm mới cấu hình (s)</div>
-                <div style="font-weight: 600;">{$policy.refresh_interval_secs}</div>
-            </div>
-        </div>
-        <div class="row between" style="margin-top: 12px;">
-            <p class="muted small" style="margin: 0;">
-                {#if $policy.from_server}
-                    Cập nhật cuối từ server: <strong>{$policy.version || "—"}</strong>
-                {:else}
-                    Chưa lấy được cấu hình từ server. Đang dùng giá trị mặc định.
-                {/if}
-            </p>
-            <button on:click={pullPolicy} disabled={policyRefreshing}>
-                {policyRefreshing ? "Đang lấy…" : "Lấy cấu hình mới"}
-            </button>
-        </div>
-    {/if}
-</div>
-
+<!-- Hotkeys -->
 <div class="card">
     <h2 style="margin-top: 0;">⌨ Phím tắt</h2>
     <div class="row" style="gap: 12px; flex-wrap: wrap;">
@@ -180,6 +186,7 @@
     </p>
 </div>
 
+<!-- Autostart -->
 <div class="card">
     <h2 style="margin-top: 0;">🚀 Khởi động cùng hệ thống</h2>
     <div class="field" style="margin-bottom: 0;">
@@ -190,19 +197,14 @@
     </div>
 </div>
 
+<!-- Updates -->
 <div class="card">
     <h2 style="margin-top: 0;">🔄 Cập nhật ứng dụng</h2>
     <div class="row between" style="margin-bottom: 12px;">
         <div>
-            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản desktop</div>
+            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản</div>
             <div style="font-weight: 600;">v{appVersion || "?"}</div>
         </div>
-        {#if serverVersion}
-        <div>
-            <div class="muted small" style="text-transform: uppercase; letter-spacing: 0.06em;">Phiên bản server</div>
-            <div style="font-weight: 600;">v{serverVersion}</div>
-        </div>
-        {/if}
         <button on:click={() => checkForUpdate()} disabled={$updateState.status === "checking"}>
             {$updateState.status === "checking" ? "Đang kiểm tra…" : "Kiểm tra cập nhật"}
         </button>
@@ -220,11 +222,11 @@
     {/if}
 
     <p class="muted small" style="margin: 12px 0 0;">
-        Cập nhật được tải qua kênh phát hành chính thức và verify chữ ký Ed25519 trước khi cài.
+        Cập nhật verify chữ ký Ed25519 trước khi cài.
     </p>
 </div>
 
 <div class="row" style="margin-top: 18px;">
     <button class="primary" on:click={save}>💾 Lưu cài đặt</button>
-    <button class="danger" on:click={logout} style="margin-left: auto;">Đăng xuất khỏi thiết bị</button>
+    <button class="danger" on:click={logout} style="margin-left: auto;">Đăng xuất</button>
 </div>
